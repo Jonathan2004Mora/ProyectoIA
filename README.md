@@ -47,7 +47,7 @@ cd rag_academico
 ```bash
 python -m venv .venv
 # Windows PowerShell
-.venv\Scripts\Activate.ps1
+& .\.venv\Scripts\Activate.ps1
 # Linux/macOS
 # source .venv/bin/activate
 ```
@@ -100,7 +100,15 @@ Este script ejecuta 3 consultas de prueba en modo comparacion y guarda resultado
 ### 4) Interfaz profesional PP2 (Streamlit)
 
 ```bash
-streamlit run app.py
+python -m streamlit run app.py
+```
+
+Si estas ubicado un nivel arriba (en `RAG_AI/`), ejecuta:
+
+```bash
+cd rag_academico
+& .\.venv\Scripts\Activate.ps1
+python -m streamlit run app.py
 ```
 
 Pestanas disponibles:
