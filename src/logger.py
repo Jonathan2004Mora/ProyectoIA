@@ -45,9 +45,14 @@ def guardar_consulta(
     modo: str,
     chunks_recuperados: List[Dict[str, Any]],
     respuesta: str,
+    evaluacion: Dict[str, Any] | None = None,
     log_path: Path = LOG_PATH_DEFAULT,
 ) -> Dict[str, Any]:
-    """Guarda una entrada de consulta y retorna la entrada creada."""
+    """Guarda una entrada de consulta y retorna la entrada creada.
+
+    Cuando se incluye una evaluacion, se guardan tambien campos resumen para
+    facilitar dashboards, historial y analitica en la interfaz de PP2.
+    """
     logs_actuales = _leer_logs(log_path)
 
     entrada = {
@@ -56,9 +61,20 @@ def guardar_consulta(
         "modo": modo,
         "chunks_recuperados": chunks_recuperados,
         "respuesta": respuesta,
+        "evaluacion": evaluacion,
     }
+
+    if evaluacion:
+        entrada["veredicto"] = evaluacion.get("veredicto")
+        entrada["score_faithfulness"] = evaluacion.get("score_faithfulness")
+        entrada["score_relevancia"] = evaluacion.get("score_relevancia")
 
     logs_actuales.append(entrada)
     log_path.write_text(json.dumps(logs_actuales, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return entrada
+
+
+def cargar_consultas(log_path: Path = LOG_PATH_DEFAULT) -> List[Dict[str, Any]]:
+    """Retorna el historial completo de consultas del archivo de logs."""
+    return _leer_logs(log_path)

@@ -30,26 +30,6 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 
-def _validar_api_key(api_key: str | None) -> str:
-    """Valida OPENAI_API_KEY y retorna la clave limpia.
-
-    Este chequeo evita errores de autenticacion comunes cuando en .env
-    se deja un valor de ejemplo como "tu_api_key_aqui".
-    """
-    if not api_key:
-        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
-
-    clave = api_key.strip()
-    placeholders = {"tu_api_key_aqui", "your_api_key_here", "api_key", "xxx"}
-    if clave.lower() in placeholders or clave.lower().startswith("tu_api_key"):
-        raise ValueError(
-            "OPENAI_API_KEY contiene un placeholder. Reemplaza el valor en .env "
-            "por una clave real de https://platform.openai.com/api-keys"
-        )
-
-    return clave
-
-
 def _extraer_paginas_pdf(pdf_path: Path) -> List[Tuple[int, str]]:
     """Extrae texto pagina por pagina desde un PDF.
 
@@ -135,9 +115,30 @@ def ingestar_corpus(
     corpus_dir: str = "corpus",
     chroma_dir: str = "chroma_db",
     collection_name: str = COLLECTION_NAME,
+    chunk_size: int = CHUNK_SIZE,
+    chunk_overlap: int = CHUNK_OVERLAP,
 ) -> Dict[str, int]:
-    """Ingresa todos los PDFs en ChromaDB y retorna estadisticas del proceso."""
-    api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
+    """Ingresa todos los PDFs en ChromaDB y retorna estadisticas del proceso.
+
+    Args:
+        corpus_dir: Carpeta donde se encuentran los PDFs.
+        chroma_dir: Carpeta de persistencia de ChromaDB.
+        collection_name: Nombre de la coleccion vectorial.
+        chunk_size: Tamano maximo de cada fragmento de texto.
+        chunk_overlap: Solapamiento entre fragmentos consecutivos.
+    """
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
+
+    if chunk_size <= 0:
+        raise ValueError("chunk_size debe ser un entero positivo.")
+
+    if chunk_overlap < 0:
+        raise ValueError("chunk_overlap no puede ser negativo.")
+
+    if chunk_overlap >= chunk_size:
+        raise ValueError("chunk_overlap debe ser menor que chunk_size.")
 
     cliente_openai = OpenAI(api_key=api_key)
 
@@ -155,7 +156,12 @@ def ingestar_corpus(
 
     for pdf_path in pdfs:
         paginas = _extraer_paginas_pdf(pdf_path)
-        documentos, metadatos, ids = _crear_chunks(pdf_path.name, paginas)
+        documentos, metadatos, ids = _crear_chunks(
+            pdf_path.name,
+            paginas,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+        )
 
         todos_los_documentos.extend(documentos)
         todos_los_metadatos.extend(metadatos)
@@ -182,6 +188,8 @@ def ingestar_corpus(
     return {
         "archivos_procesados": len(pdfs),
         "chunks_indexados": len(todos_los_documentos),
+        "chunk_size": chunk_size,
+        "chunk_overlap": chunk_overlap,
     }
 
 
