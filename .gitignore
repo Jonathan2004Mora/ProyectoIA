@@ -1,0 +1,31 @@
+# Entorno virtual de Python
+.venv/
+venv/
+env/
+
+# Variables de entorno sensibles (API keys, secretos)
+.env
+.env.*
+!.env.example
+
+# Cache y artefactos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Archivos de sistema/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Base vectorial persistente y logs locales
+chroma_db/
+logs/
+
+# (Opcional) Si no quieres versionar PDFs grandes del curso,
+# descomenta la siguiente linea:
+# corpus/
