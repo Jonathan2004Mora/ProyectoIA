@@ -10,7 +10,7 @@ La app integra:
 from __future__ import annotations
 
 import re
-from typing import Dict, List
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -23,8 +23,11 @@ from src.ingestion import ingestar_corpus
 from src.logger import cargar_consultas, guardar_consulta
 from src.retrieval import recuperar_chunks
 
+Chunk = dict[str, Any]
+Evaluacion = dict[str, Any]
+
 # Configuracion base de la pagina para una presentacion profesional en wide layout.
-st.set_page_config(title="RAG Académico · EIF420", page_icon="📚", layout="wide")
+st.set_page_config(page_title="RAG Académico · EIF420", page_icon="📚", layout="wide")
 
 
 # Inyeccion solicitada de Tailwind + DaisyUI.
@@ -243,7 +246,7 @@ def _render_header() -> None:
     )
 
 
-def _extraer_badges_fuentes(respuesta: str) -> List[str]:
+def _extraer_badges_fuentes(respuesta: str) -> list[str]:
     """Detecta posibles menciones de fuentes para mostrarlas como badges."""
     # Soporta formatos tipo: archivo.pdf p.3 | archivo.pdf pagina 3.
     patron = r"([\w\-. ]+\.pdf)\s*(?:\||,)?\s*(?:p\.?|pagina)\s*([0-9]+)"
@@ -260,7 +263,7 @@ def _clase_veredicto(veredicto: str) -> str:
     return "veredicto veredicto-alucinacion"
 
 
-def _render_chunks(chunks: List[Dict]) -> None:
+def _render_chunks(chunks: list[Chunk]) -> None:
     """Renderiza fragmentos recuperados como cards estilizadas."""
     if not chunks:
         st.info("No se recuperaron fragmentos para esta consulta.")
@@ -282,7 +285,7 @@ def _render_chunks(chunks: List[Dict]) -> None:
         )
 
 
-def _render_metricas(evaluacion: Dict) -> None:
+def _render_metricas(evaluacion: Evaluacion) -> None:
     """Muestra metricas clave de evaluacion en cards compactas."""
     veredicto = evaluacion.get("veredicto", "ALUCINACION")
     st.markdown(
@@ -302,7 +305,8 @@ def _render_metricas(evaluacion: Dict) -> None:
         unsafe_allow_html=True,
     )
 
-    problemas = evaluacion.get("problemas_detectados", [])
+    problemas_raw = evaluacion.get("problemas_detectados", [])
+    problemas = [str(p) for p in problemas_raw] if isinstance(problemas_raw, list) else []
     if problemas:
         st.warning("Problemas detectados: " + " | ".join(problemas))
 
@@ -328,7 +332,9 @@ def tab_consulta_rag(evaluador: EvaluadorRAG) -> None:
             with st.spinner("Recuperando evidencia y generando respuesta..."):
                 chunks = recuperar_chunks(query=query, k=top_k)
                 respuesta = responder_con_rag(query=query, chunks=chunks)
-                evaluacion = evaluador.evaluar(query=query, respuesta=respuesta, chunks=chunks)
+                evaluacion: Evaluacion = evaluador.evaluar(
+                  query=query, respuesta=respuesta, chunks=chunks
+                )
 
                 guardar_consulta(
                     query=query,
@@ -373,8 +379,12 @@ def tab_comparacion(evaluador: EvaluadorRAG) -> None:
                 resp_llm = responder_sin_rag(query=query)
                 resp_rag = responder_con_rag(query=query, chunks=chunks)
 
-                eval_llm = evaluador.evaluar(query=query, respuesta=resp_llm, chunks=[])
-                eval_rag = evaluador.evaluar(query=query, respuesta=resp_rag, chunks=chunks)
+                eval_llm: Evaluacion = evaluador.evaluar(
+                  query=query, respuesta=resp_llm, chunks=[]
+                )
+                eval_rag: Evaluacion = evaluador.evaluar(
+                  query=query, respuesta=resp_rag, chunks=chunks
+                )
 
                 guardar_consulta(query, "sin_rag", [], resp_llm, evaluacion=eval_llm)
                 guardar_consulta(query, "con_rag", chunks, resp_rag, evaluacion=eval_rag)
@@ -407,9 +417,12 @@ def tab_experimentos() -> None:
     if st.button("Correr experimentos de configuraciones →", type="primary", use_container_width=True):
         try:
             with st.spinner("Corriendo benchmark de configuraciones (puede tardar)..."):
-                resultado = ejecutar_experimentos()
+                resultado: dict[str, Any] = ejecutar_experimentos()
 
-            resumen = resultado.get("resumen_por_config", [])
+              resumen_raw = resultado.get("resumen_por_config", [])
+              resumen: list[dict[str, Any]] = (
+                resumen_raw if isinstance(resumen_raw, list) else []
+              )
             if not resumen:
                 st.warning("No se obtuvieron resultados de experimento.")
                 return
@@ -422,7 +435,7 @@ def tab_experimentos() -> None:
             kpi2.metric("Mejor Faith", f"{mejor_faith['config']} ({mejor_faith['promedio_faithfulness']})")
             kpi3.metric("Menor % alucinación", f"{menor_aluc['config']} ({menor_aluc['porcentaje_alucinaciones']}%)")
 
-            filas_tabla = []
+            filas_tabla: list[dict[str, Any]] = []
             for fila in resumen:
                 promedio = round((fila["promedio_faithfulness"] + fila["promedio_relevancia"]) / 2, 2)
                 filas_tabla.append(
@@ -473,9 +486,9 @@ def tab_historial() -> None:
             st.info("Aun no hay consultas registradas en logs/consultas.json")
             return
 
-        filas = []
+        filas: list[dict[str, Any]] = []
         for item in consultas:
-            evaluacion = item.get("evaluacion") or {}
+          evaluacion: Evaluacion = item.get("evaluacion") or {}
             filas.append(
                 {
                     "timestamp": item.get("timestamp", ""),

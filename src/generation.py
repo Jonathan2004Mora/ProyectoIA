@@ -8,7 +8,7 @@ Incluye dos funciones requeridas por PP1:
 from __future__ import annotations
 
 import os
-from typing import Dict, List
+from typing import Any, List
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -34,25 +34,11 @@ SYSTEM_PROMPT_SIN_RAG = (
 )
 
 
-def _validar_api_key(api_key: str | None) -> str:
-    """Valida OPENAI_API_KEY para evitar errores de autenticacion comunes."""
-    if not api_key:
-        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
-
-    clave = api_key.strip()
-    placeholders = {"tu_api_key_aqui", "your_api_key_here", "api_key", "xxx"}
-    if clave.lower() in placeholders or clave.lower().startswith("tu_api_key"):
-        raise ValueError(
-            "OPENAI_API_KEY contiene un placeholder. Reemplaza el valor en .env "
-            "por una clave real de https://platform.openai.com/api-keys"
-        )
-
-    return clave
-
-
 def _crear_cliente() -> OpenAI:
     """Crea cliente OpenAI validando que exista API key."""
-    api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
     return OpenAI(api_key=api_key)
 
 
@@ -74,7 +60,7 @@ def responder_sin_rag(query: str, model: str = DEFAULT_MODEL) -> str:
     return completion.choices[0].message.content or "No se obtuvo respuesta del modelo."
 
 
-def responder_con_rag(query: str, chunks: List[Dict], model: str = DEFAULT_MODEL) -> str:
+def responder_con_rag(query: str, chunks: List[dict[str, Any]], model: str = DEFAULT_MODEL) -> str:
     """Genera respuesta inyectando chunks recuperados como evidencia.
 
     Si no hay chunks, se devuelve un mensaje explicito de evidencia insuficiente,
@@ -90,7 +76,7 @@ def responder_con_rag(query: str, chunks: List[Dict], model: str = DEFAULT_MODEL
         )
 
     # Construimos un bloque de contexto con trazabilidad por fuente y pagina.
-    contexto_formateado = []
+    contexto_formateado: List[str] = []
     for idx, chunk in enumerate(chunks, start=1):
         fuente = chunk.get("source", "desconocido")
         pagina = chunk.get("page", "?")

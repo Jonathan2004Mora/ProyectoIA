@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, List, Tuple, cast
 
 import chromadb
 from dotenv import load_dotenv
@@ -54,7 +54,7 @@ def _crear_chunks(
     paginas: List[Tuple[int, str]],
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
-) -> Tuple[List[str], List[Dict], List[str]]:
+) -> Tuple[List[str], List[dict[str, Any]], List[str]]:
     """Genera chunks a partir del texto por paginas y prepara metadatos/ids.
 
     Metadatos requeridos por el enunciado:
@@ -69,7 +69,7 @@ def _crear_chunks(
     )
 
     documentos: List[str] = []
-    metadatos: List[Dict] = []
+    metadatos: List[dict[str, Any]] = []
     ids: List[str] = []
 
     for numero_pagina, texto_pagina in paginas:
@@ -117,7 +117,7 @@ def ingestar_corpus(
     collection_name: str = COLLECTION_NAME,
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Ingresa todos los PDFs en ChromaDB y retorna estadisticas del proceso.
 
     Args:
@@ -151,7 +151,7 @@ def ingestar_corpus(
         raise FileNotFoundError("No se encontraron PDFs en la carpeta corpus/.")
 
     todos_los_documentos: List[str] = []
-    todos_los_metadatos: List[Dict] = []
+    todos_los_metadatos: List[dict[str, Any]] = []
     todos_los_ids: List[str] = []
 
     for pdf_path in pdfs:
@@ -181,8 +181,8 @@ def ingestar_corpus(
     collection.upsert(
         ids=todos_los_ids,
         documents=todos_los_documentos,
-        metadatas=todos_los_metadatos,
-        embeddings=embeddings,
+        metadatas=cast(Any, todos_los_metadatos),
+        embeddings=cast(Any, embeddings),
     )
 
     return {

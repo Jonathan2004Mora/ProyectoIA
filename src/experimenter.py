@@ -11,7 +11,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
-from typing import Dict, List
+from typing import Any
 
 from src.evaluator import EvaluadorRAG
 from src.generation import responder_con_rag
@@ -37,7 +37,9 @@ CONFIGURACIONES = [
 ]
 
 
-def _guardar_resultado_experimento(entrada: Dict, log_path: Path = EXPERIMENTOS_LOG_PATH) -> None:
+def _guardar_resultado_experimento(
+    entrada: dict[str, Any], log_path: Path = EXPERIMENTOS_LOG_PATH
+) -> None:
     """Persistencia acumulada de ejecuciones de experimentos en JSON."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -55,7 +57,12 @@ def _guardar_resultado_experimento(entrada: Dict, log_path: Path = EXPERIMENTOS_
     log_path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _resumen_configuracion(nombre: str, chunk_size: int, top_k: int, resultados: List[Dict]) -> Dict:
+def _resumen_configuracion(
+    nombre: str,
+    chunk_size: int,
+    top_k: int,
+    resultados: list[dict[str, Any]],
+) -> dict[str, Any]:
     """Calcula metricas agregadas por configuracion para analisis comparativo."""
     scores_faith = [r["evaluacion"]["score_faithfulness"] for r in resultados]
     scores_relev = [r["evaluacion"]["score_relevancia"] for r in resultados]
@@ -78,11 +85,11 @@ def _resumen_configuracion(nombre: str, chunk_size: int, top_k: int, resultados:
 
 
 def ejecutar_experimentos(
-    queries: List[str] | None = None,
+    queries: list[str] | None = None,
     chroma_dir: str = "chroma_db",
     corpus_dir: str = "corpus",
     overlap: int = 50,
-) -> Dict:
+) -> dict[str, Any]:
     """Ejecuta el benchmark de configuraciones y retorna resultados completos."""
     evaluador = EvaluadorRAG()
     queries_ejecucion = queries or QUERIES_PRUEBA
@@ -110,7 +117,7 @@ def ejecutar_experimentos(
             chunk_overlap=overlap,
         )
 
-        resultados_config: List[Dict] = []
+        resultados_config: list[dict[str, Any]] = []
         for query in queries_ejecucion:
             chunks = recuperar_chunks(
                 query=query,

@@ -10,7 +10,7 @@ Responsabilidad principal:
 from __future__ import annotations
 
 import os
-from typing import Dict, List
+from typing import Any, List, Mapping
 
 import chromadb
 from dotenv import load_dotenv
@@ -23,28 +23,12 @@ COLLECTION_NAME = "eif420_corpus"
 EMBEDDING_MODEL = "text-embedding-3-small"
 
 
-def _validar_api_key(api_key: str | None) -> str:
-    """Valida OPENAI_API_KEY para evitar errores de autenticacion comunes."""
-    if not api_key:
-        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
-
-    clave = api_key.strip()
-    placeholders = {"tu_api_key_aqui", "your_api_key_here", "api_key", "xxx"}
-    if clave.lower() in placeholders or clave.lower().startswith("tu_api_key"):
-        raise ValueError(
-            "OPENAI_API_KEY contiene un placeholder. Reemplaza el valor en .env "
-            "por una clave real de https://platform.openai.com/api-keys"
-        )
-
-    return clave
-
-
 def recuperar_chunks(
     query: str,
     k: int = 3,
     chroma_dir: str = "chroma_db",
     collection_name: str = COLLECTION_NAME,
-) -> List[Dict]:
+) -> List[dict[str, Any]]:
     """Recupera top-k chunks relevantes y retorna lista de dicts.
 
     Formato de salida por item:
@@ -58,7 +42,9 @@ def recuperar_chunks(
     if not query.strip():
         raise ValueError("La consulta no puede estar vacia.")
 
-    api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
 
     cliente_openai = OpenAI(api_key=api_key)
 
@@ -76,19 +62,39 @@ def recuperar_chunks(
         include=["documents", "metadatas", "distances"],
     )
 
-    documentos = resultados.get("documents", [[]])[0]
-    metadatos = resultados.get("metadatas", [[]])[0]
-    distancias = resultados.get("distances", [[]])[0]
+    documentos_raw = resultados.get("documents") or [[]]
+    metadatos_raw = resultados.get("metadatas") or [[]]
+    distancias_raw = resultados.get("distances") or [[]]
 
-    salida: List[Dict] = []
+    documentos = documentos_raw[0] if documentos_raw else []
+    metadatos = metadatos_raw[0] if metadatos_raw else []
+    distancias = distancias_raw[0] if distancias_raw else []
+
+    salida: List[dict[str, Any]] = []
     for texto, meta, distancia in zip(documentos, metadatos, distancias):
+        meta_map: Mapping[str, Any] = dict(meta)
+
         # Convertimos distancia en score interpretable: mas alto = mejor.
         score = 1.0 / (1.0 + float(distancia))
+
+        source_raw = meta_map.get("source", "desconocido")
+        source = str(source_raw)
+
+        page_raw = meta_map.get("page", -1)
+        if isinstance(page_raw, bool):
+            page = -1
+        elif isinstance(page_raw, (int, float)):
+            page = int(page_raw)
+        elif isinstance(page_raw, str) and page_raw.strip().isdigit():
+            page = int(page_raw.strip())
+        else:
+            page = -1
+
         salida.append(
             {
                 "text": texto,
-                "source": meta.get("source", "desconocido"),
-                "page": int(meta.get("page", -1)),
+                "source": source,
+                "page": page,
                 "score": round(score, 4),
             }
         )

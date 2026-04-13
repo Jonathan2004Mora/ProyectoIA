@@ -7,7 +7,7 @@ una evaluacion consistente de faithfulness, relevancia y alucinaciones.
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Literal
+from typing import Any, Literal
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -24,7 +24,7 @@ class EvaluacionRAG(BaseModel):
     score_relevancia: int = Field(..., ge=0, le=10)
     tiene_alucinacion: bool
     citas_validas: bool
-    problemas_detectados: List[str]
+    problemas_detectados: list[str]
     veredicto: Literal["CONFIABLE", "DUDOSO", "ALUCINACION"]
 
 
@@ -44,7 +44,7 @@ class EvaluadorRAG:
         return OpenAI(api_key=api_key)
 
     @staticmethod
-    def _fallback_evaluacion() -> Dict:
+    def _fallback_evaluacion() -> dict[str, Any]:
         """Resultado por defecto cuando falla parseo o invocacion del evaluador."""
         return {
             "score_faithfulness": 0,
@@ -56,12 +56,12 @@ class EvaluadorRAG:
         }
 
     @staticmethod
-    def _formatear_chunks(chunks: List[Dict]) -> str:
+    def _formatear_chunks(chunks: list[dict[str, Any]]) -> str:
         """Construye bloque de evidencia con metadata para el prompt."""
         if not chunks:
             return "No se recuperaron chunks para esta respuesta."
 
-        bloques: List[str] = []
+        bloques: list[str] = []
         for idx, chunk in enumerate(chunks, start=1):
             source = chunk.get("source", "desconocido")
             page = chunk.get("page", "?")
@@ -73,7 +73,7 @@ class EvaluadorRAG:
 
         return "\n\n".join(bloques)
 
-    def evaluar(self, query: str, respuesta: str, chunks: list) -> dict:
+    def evaluar(self, query: str, respuesta: str, chunks: list[dict[str, Any]]) -> dict[str, Any]:
         """Evalua la respuesta con base en evidencia recuperada.
 
         Usa Structured Outputs mediante parse() para mapear directamente al
