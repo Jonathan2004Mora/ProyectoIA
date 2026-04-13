@@ -13,13 +13,16 @@ rag_academico/
 ├── corpus/                 # PDFs y documentos del curso
 ├── chroma_db/              # Vector store persistente
 ├── logs/                   # JSON logs de consultas
+├── app.py                  # Interfaz Streamlit PP2
 ├── src/
 │   ├── __init__.py
 │   ├── init.py             # Archivo de compatibilidad solicitado
 │   ├── ingestion.py        # Carga y chunking de documentos
 │   ├── retrieval.py        # Busqueda en ChromaDB
 │   ├── generation.py       # Llamada OpenAI con/sin contexto
-│   └── logger.py           # Guardado de logs en JSON
+│   ├── logger.py           # Guardado de logs en JSON
+│   ├── evaluator.py        # Evaluador LLM con Structured Outputs
+│   └── experimenter.py     # Comparador de configuraciones (A/B/C/D)
 ├── main.py                 # CLI principal
 ├── demo_pp1.py             # Script de demostracion automatica
 ├── requirements.txt
@@ -94,6 +97,32 @@ python demo_pp1.py
 
 Este script ejecuta 3 consultas de prueba en modo comparacion y guarda resultados en logs para evidencia academica.
 
+### 4) Interfaz profesional PP2 (Streamlit)
+
+```bash
+streamlit run app.py
+```
+
+Pestanas disponibles:
+- 🔍 Consulta RAG: evidencia recuperada + respuesta + evaluacion automatica.
+- ⚔️ RAG vs Sin RAG: comparacion lado a lado.
+- 🧪 Experimentos: benchmark de configuraciones A/B/C/D.
+- 📊 Historial: consultas registradas desde logs.
+
+### 5) Experimentos PP2 por script
+
+```bash
+python -m src.experimenter
+```
+
+Esto ejecuta al menos 5 queries sobre estas configuraciones:
+- Config A: chunk_size=300, top_k=2
+- Config B: chunk_size=300, top_k=5
+- Config C: chunk_size=700, top_k=2
+- Config D: chunk_size=700, top_k=5
+
+Los resultados y promedios se guardan en `logs/experimentos.json`.
+
 ## Detalle de modulos
 
 - `src/ingestion.py`:
@@ -112,6 +141,16 @@ Este script ejecuta 3 consultas de prueba en modo comparacion y guarda resultado
 
 - `src/logger.py`:
   - Guarda logs en JSON con timestamp, query, modo, chunks y respuesta.
+
+- `src/evaluator.py`:
+  - Define el modelo estructurado `EvaluacionRAG` con Pydantic.
+  - Implementa `EvaluadorRAG.evaluar(query, respuesta, chunks)` usando OpenAI + Structured Outputs.
+  - Retorna fallback seguro si falla el parseo del LLM.
+
+- `src/experimenter.py`:
+  - Corre pruebas comparativas de configuraciones de chunking y retrieval.
+  - Evalua cada respuesta con `EvaluadorRAG`.
+  - Genera resumen con promedios de faithfulness, relevancia, porcentaje de alucinaciones y veredicto mas frecuente.
 
 ## Prompt del sistema para RAG
 
