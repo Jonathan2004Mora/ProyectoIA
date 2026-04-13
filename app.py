@@ -10,7 +10,7 @@ La app integra:
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -306,7 +306,10 @@ def _render_metricas(evaluacion: Evaluacion) -> None:
     )
 
     problemas_raw = evaluacion.get("problemas_detectados", [])
-    problemas = [str(p) for p in problemas_raw] if isinstance(problemas_raw, list) else []
+    if isinstance(problemas_raw, list):
+      problemas = [str(p) for p in cast(list[Any], problemas_raw)]
+    else:
+      problemas = []
     if problemas:
         st.warning("Problemas detectados: " + " | ".join(problemas))
 
@@ -315,6 +318,16 @@ def _asegurar_corpus_indexado() -> None:
     """Indexa corpus por defecto al inicio si se solicita desde la UI."""
     with st.spinner("Indexando corpus base (chunk_size=500)..."):
         ingestar_corpus(chunk_size=500, chunk_overlap=50)
+
+
+def _render_dataframe(data: Any) -> None:
+  """Wrapper tipado para mostrar dataframes sin ruido del type checker."""
+  cast(Any, st).dataframe(data, use_container_width=True)
+
+
+def _render_bar_chart(data: Any) -> None:
+  """Wrapper tipado para graficos de barras con stubs parcialmente tipados."""
+  cast(Any, st).bar_chart(data)
 
 
 def tab_consulta_rag(evaluador: EvaluadorRAG) -> None:
@@ -367,6 +380,13 @@ def tab_comparacion(evaluador: EvaluadorRAG) -> None:
     """Tab 2: comparacion LLM solo vs RAG con evidencia."""
     st.markdown("### Comparación directa")
     query = st.text_area("Pregunta para comparar", height=120, key="query_compare")
+    top_k_compare = st.slider(
+        "top_k para comparación",
+        min_value=1,
+        max_value=10,
+        value=3,
+        key="top_k_compare",
+    )
 
     if st.button("Comparar", use_container_width=True):
         if not query.strip():
@@ -375,15 +395,15 @@ def tab_comparacion(evaluador: EvaluadorRAG) -> None:
 
         try:
             with st.spinner("Ejecutando comparación RAG vs Sin RAG..."):
-                chunks = recuperar_chunks(query=query, k=3)
+                chunks = recuperar_chunks(query=query, k=top_k_compare)
                 resp_llm = responder_sin_rag(query=query)
                 resp_rag = responder_con_rag(query=query, chunks=chunks)
 
                 eval_llm: Evaluacion = evaluador.evaluar(
-                  query=query, respuesta=resp_llm, chunks=[]
+                    query=query, respuesta=resp_llm, chunks=[]
                 )
                 eval_rag: Evaluacion = evaluador.evaluar(
-                  query=query, respuesta=resp_rag, chunks=chunks
+                    query=query, respuesta=resp_rag, chunks=chunks
                 )
 
                 guardar_consulta(query, "sin_rag", [], resp_llm, evaluacion=eval_llm)
@@ -414,53 +434,93 @@ def tab_experimentos() -> None:
     """Tab 3: benchmark de configuraciones chunk_size/top_k."""
     st.markdown("### Experimentos de configuraciones")
 
+    num_queries = st.slider(
+        "Cantidad de queries para este experimento",
+        min_value=1,
+        max_value=5,
+        value=5,
+        help="Usa menos queries para pruebas rapidas. Para evaluacion formal usa 5.",
+    )
+    force_reindex = st.checkbox(
+        "Forzar reindexado de colecciones",
+        value=False,
+        help="Activalo solo si cambiaste el corpus o quieres reconstruir embeddings.",
+    )
+
     if st.button("Correr experimentos de configuraciones →", type="primary", use_container_width=True):
         try:
             with st.spinner("Corriendo benchmark de configuraciones (puede tardar)..."):
-                resultado: dict[str, Any] = ejecutar_experimentos()
+                queries_demo = [
+                    "Que es Retrieval-Augmented Generation y cual es su objetivo principal?",
+                    "Como ayuda RAG a reducir alucinaciones en modelos de lenguaje?",
+                    "Cual es la diferencia entre usar evidencia recuperada y responder solo con memoria parametric?",
+                    "Que elementos deberia incluir una cita valida en una respuesta academica asistida por IA?",
+                    "Que limitaciones se mencionan sobre la calidad de recuperacion en sistemas RAG?",
+                ]
+                resultado: dict[str, Any] = ejecutar_experimentos(
+                    queries=queries_demo[:num_queries],
+                    force_reindex=force_reindex,
+                )
 
-              resumen_raw = resultado.get("resumen_por_config", [])
-              resumen: list[dict[str, Any]] = (
-                resumen_raw if isinstance(resumen_raw, list) else []
-              )
+            resumen: list[dict[str, Any]] = []
+            resumen_raw = resultado.get("resumen_por_config", [])
+            if isinstance(resumen_raw, list):
+                for fila in cast(list[Any], resumen_raw):
+                    if isinstance(fila, dict):
+                        resumen.append(cast(dict[str, Any], fila))
+
             if not resumen:
                 st.warning("No se obtuvieron resultados de experimento.")
                 return
 
-            mejor_faith = max(resumen, key=lambda x: x.get("promedio_faithfulness", 0))
-            menor_aluc = min(resumen, key=lambda x: x.get("porcentaje_alucinaciones", 100))
+            mejor_faith = max(
+                resumen,
+                key=lambda x: float(x.get("promedio_faithfulness", 0) or 0),
+            )
+            menor_aluc = min(
+                resumen,
+                key=lambda x: float(x.get("porcentaje_alucinaciones", 100) or 100),
+            )
 
             kpi1, kpi2, kpi3 = st.columns(3)
             kpi1.metric("Configuraciones", len(resumen))
-            kpi2.metric("Mejor Faith", f"{mejor_faith['config']} ({mejor_faith['promedio_faithfulness']})")
-            kpi3.metric("Menor % alucinación", f"{menor_aluc['config']} ({menor_aluc['porcentaje_alucinaciones']}%)")
+            kpi2.metric(
+                "Mejor Faith",
+                f"{mejor_faith['config']} ({mejor_faith['promedio_faithfulness']})",
+            )
+            kpi3.metric(
+                "Menor % alucinación",
+                f"{menor_aluc['config']} ({menor_aluc['porcentaje_alucinaciones']}%)",
+            )
 
             filas_tabla: list[dict[str, Any]] = []
             for fila in resumen:
-                promedio = round((fila["promedio_faithfulness"] + fila["promedio_relevancia"]) / 2, 2)
+                faith = float(fila.get("promedio_faithfulness", 0) or 0)
+                relev = float(fila.get("promedio_relevancia", 0) or 0)
+                promedio = round((faith + relev) / 2, 2)
                 filas_tabla.append(
                     {
-                        "Config": fila["config"],
-                        "chunk_size": fila["chunk_size"],
-                        "top_k": fila["top_k"],
-                        "Faith": fila["promedio_faithfulness"],
-                        "Relev": fila["promedio_relevancia"],
-                        "Veredicto": fila["veredicto_mas_frecuente"],
+                        "Config": str(fila.get("config", "N/A")),
+                        "chunk_size": int(fila.get("chunk_size", 0) or 0),
+                        "top_k": int(fila.get("top_k", 0) or 0),
+                        "Faith": faith,
+                        "Relev": relev,
+                        "Veredicto": str(fila.get("veredicto_mas_frecuente", "N/A")),
                         "Promedio": promedio,
                     }
                 )
 
-            st.dataframe(filas_tabla, use_container_width=True)
+            _render_dataframe(filas_tabla)
 
             st.markdown("#### Comparación visual de scores")
             chart_data = pd.DataFrame(
-              {
-                "Config": [f["Config"] for f in filas_tabla],
-                "Faithfulness": [f["Faith"] for f in filas_tabla],
-                "Relevancia": [f["Relev"] for f in filas_tabla],
-              }
+                {
+                    "Config": [f["Config"] for f in filas_tabla],
+                    "Faithfulness": [f["Faith"] for f in filas_tabla],
+                    "Relevancia": [f["Relev"] for f in filas_tabla],
+                }
             ).set_index("Config")
-            st.bar_chart(chart_data)
+            _render_bar_chart(chart_data)
 
             st.markdown("#### Conclusión automática")
             st.markdown(
@@ -488,7 +548,7 @@ def tab_historial() -> None:
 
         filas: list[dict[str, Any]] = []
         for item in consultas:
-          evaluacion: Evaluacion = item.get("evaluacion") or {}
+            evaluacion: Evaluacion = item.get("evaluacion") or {}
             filas.append(
                 {
                     "timestamp": item.get("timestamp", ""),
@@ -504,7 +564,7 @@ def tab_historial() -> None:
                 }
             )
 
-        st.dataframe(filas, use_container_width=True)
+        _render_dataframe(filas)
     except Exception as exc:
         st.error(f"No se pudo cargar historial: {exc}")
 
