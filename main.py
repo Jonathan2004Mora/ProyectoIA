@@ -11,7 +11,7 @@ Flujo general:
 
 from __future__ import annotations
 
-from typing import List
+from typing import Any
 
 from src.generation import responder_con_rag, responder_sin_rag
 from src.ingestion import ingestar_corpus
@@ -19,7 +19,10 @@ from src.logger import guardar_consulta
 from src.retrieval import recuperar_chunks
 
 
-def mostrar_chunks(chunks: List[dict]) -> None:
+Chunk = dict[str, Any]
+
+
+def mostrar_chunks(chunks: list[Chunk]) -> None:
     """Imprime chunks recuperados para transparencia del proceso RAG."""
     print("\n=== Chunks recuperados ===")
 
@@ -78,6 +81,33 @@ def ejecutar_modo_comparacion(query: str, k: int) -> None:
     )
 
 
+def ejecutar_consulta_con_reintento(modo: str, query: str, k: int) -> None:
+    """Ejecuta una consulta y, si falta la coleccion, intenta auto-ingestion.
+
+    Esto evita que la CLI falle cuando el usuario omite la ingestion inicial.
+    """
+    try:
+        if modo == "1":
+            ejecutar_modo_solo_rag(query=query, k=k)
+        else:
+            ejecutar_modo_comparacion(query=query, k=k)
+        return
+    except Exception as exc:
+        error_texto = str(exc).lower()
+        if "does not exist" not in error_texto and "collection" not in error_texto:
+            raise
+
+        print("\nNo se encontro la coleccion vectorial. Ejecutando ingestion automatica...")
+        resultado = ingestar_corpus()
+        print("Ingestion completada:")
+        print(resultado)
+
+    if modo == "1":
+        ejecutar_modo_solo_rag(query=query, k=k)
+    else:
+        ejecutar_modo_comparacion(query=query, k=k)
+
+
 def main() -> None:
     """Punto de entrada de la CLI interactiva."""
     print("RAG Academico - Reducir Alucinaciones con Evidencia y Citas")
@@ -117,10 +147,7 @@ def main() -> None:
             continue
 
         try:
-            if modo == "1":
-                ejecutar_modo_solo_rag(query=query, k=k)
-            else:
-                ejecutar_modo_comparacion(query=query, k=k)
+            ejecutar_consulta_con_reintento(modo=modo, query=query, k=k)
 
             print("\nConsulta registrada en logs/consultas.json")
         except Exception as exc:

@@ -28,6 +28,13 @@ COLLECTION_NAME = "eif420_corpus"
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolver_ruta(ruta: str) -> Path:
+    """Resuelve rutas relativas respecto a la raiz del proyecto rag_academico."""
+    path = Path(ruta)
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _extraer_paginas_pdf(pdf_path: Path) -> List[Tuple[int, str]]:
@@ -142,9 +149,9 @@ def ingestar_corpus(
 
     cliente_openai = OpenAI(api_key=api_key)
 
-    carpeta_corpus = Path(corpus_dir)
+    carpeta_corpus = _resolver_ruta(corpus_dir)
     if not carpeta_corpus.exists():
-        raise FileNotFoundError(f"No existe la carpeta de corpus: {corpus_dir}")
+        raise FileNotFoundError(f"No existe la carpeta de corpus: {carpeta_corpus}")
 
     pdfs = sorted(carpeta_corpus.glob("*.pdf"))
     if not pdfs:
@@ -174,7 +181,8 @@ def ingestar_corpus(
     embeddings = _crear_embeddings(todos_los_documentos, cliente_openai)
 
     # PersistentClient guarda la base vectorial en disco para reutilizarla.
-    chroma_client = chromadb.PersistentClient(path=chroma_dir)
+    chroma_path = _resolver_ruta(chroma_dir)
+    chroma_client = chromadb.PersistentClient(path=str(chroma_path))
     collection = chroma_client.get_or_create_collection(name=collection_name)
 
     # upsert actualiza o inserta segun el id, evitando duplicaciones al re-ejecutar.

@@ -10,7 +10,11 @@ La app integra:
 from __future__ import annotations
 
 import re
+<<<<<<< HEAD
 from typing import Any, cast
+=======
+from typing import Any
+>>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 
 import pandas as pd
 import streamlit as st
@@ -306,10 +310,14 @@ def _render_metricas(evaluacion: Evaluacion) -> None:
     )
 
     problemas_raw = evaluacion.get("problemas_detectados", [])
+<<<<<<< HEAD
     if isinstance(problemas_raw, list):
       problemas = [str(p) for p in cast(list[Any], problemas_raw)]
     else:
       problemas = []
+=======
+    problemas = [str(p) for p in problemas_raw] if isinstance(problemas_raw, list) else []
+>>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
     if problemas:
         st.warning("Problemas detectados: " + " | ".join(problemas))
 
@@ -400,10 +408,17 @@ def tab_comparacion(evaluador: EvaluadorRAG) -> None:
                 resp_rag = responder_con_rag(query=query, chunks=chunks)
 
                 eval_llm: Evaluacion = evaluador.evaluar(
+<<<<<<< HEAD
                     query=query, respuesta=resp_llm, chunks=[]
                 )
                 eval_rag: Evaluacion = evaluador.evaluar(
                     query=query, respuesta=resp_rag, chunks=chunks
+=======
+                  query=query, respuesta=resp_llm, chunks=[]
+                )
+                eval_rag: Evaluacion = evaluador.evaluar(
+                  query=query, respuesta=resp_rag, chunks=chunks
+>>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
                 )
 
                 guardar_consulta(query, "sin_rag", [], resp_llm, evaluacion=eval_llm)
@@ -450,6 +465,7 @@ def tab_experimentos() -> None:
     if st.button("Correr experimentos de configuraciones →", type="primary", use_container_width=True):
         try:
             with st.spinner("Corriendo benchmark de configuraciones (puede tardar)..."):
+<<<<<<< HEAD
                 queries_demo = [
                     "Que es Retrieval-Augmented Generation y cual es su objetivo principal?",
                     "Como ayuda RAG a reducir alucinaciones en modelos de lenguaje?",
@@ -469,6 +485,14 @@ def tab_experimentos() -> None:
                     if isinstance(fila, dict):
                         resumen.append(cast(dict[str, Any], fila))
 
+=======
+                resultado: dict[str, Any] = ejecutar_experimentos()
+
+              resumen_raw = resultado.get("resumen_por_config", [])
+              resumen: list[dict[str, Any]] = (
+                resumen_raw if isinstance(resumen_raw, list) else []
+              )
+>>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
             if not resumen:
                 st.warning("No se obtuvieron resultados de experimento.")
                 return
@@ -548,7 +572,11 @@ def tab_historial() -> None:
 
         filas: list[dict[str, Any]] = []
         for item in consultas:
+<<<<<<< HEAD
             evaluacion: Evaluacion = item.get("evaluacion") or {}
+=======
+          evaluacion: Evaluacion = item.get("evaluacion") or {}
+>>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
             filas.append(
                 {
                     "timestamp": item.get("timestamp", ""),

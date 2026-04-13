@@ -10,6 +10,7 @@ Responsabilidad principal:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any, List, Mapping
 
 import chromadb
@@ -21,6 +22,13 @@ load_dotenv()
 
 COLLECTION_NAME = "eif420_corpus"
 EMBEDDING_MODEL = "text-embedding-3-small"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolver_ruta(ruta: str) -> Path:
+    """Resuelve rutas relativas respecto a la raiz del proyecto rag_academico."""
+    path = Path(ruta)
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def recuperar_chunks(
@@ -52,7 +60,8 @@ def recuperar_chunks(
     emb_query = cliente_openai.embeddings.create(model=EMBEDDING_MODEL, input=query)
     query_embedding = emb_query.data[0].embedding
 
-    chroma_client = chromadb.PersistentClient(path=chroma_dir)
+    chroma_path = _resolver_ruta(chroma_dir)
+    chroma_client = chromadb.PersistentClient(path=str(chroma_path))
     collection = chroma_client.get_collection(name=collection_name)
 
     # distances: menor distancia = mayor similitud.

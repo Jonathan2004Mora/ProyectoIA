@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
 
-LOG_PATH_DEFAULT = Path("logs/consultas.json")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+LOG_PATH_DEFAULT = PROJECT_ROOT / "logs" / "consultas.json"
 
 
 def _asegurar_archivo_log(log_path: Path) -> None:
