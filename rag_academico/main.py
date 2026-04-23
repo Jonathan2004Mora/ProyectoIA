@@ -11,26 +11,19 @@ Flujo general:
 
 from __future__ import annotations
 
-<<<<<<< HEAD
 from typing import Any
-=======
 from typing import List
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
 
-from src.generation import responder_con_rag, responder_sin_rag
-from src.ingestion import ingestar_corpus
-from src.logger import guardar_consulta
-from src.retrieval import recuperar_chunks
+from rag_academico.src.generation import responder_con_rag, responder_sin_rag
+from rag_academico.src.ingestion import ingestar_corpus
+from rag_academico.src.logger import guardar_consulta
+from rag_academico.src.retrieval import recuperar_chunks
 
 
-<<<<<<< HEAD
 Chunk = dict[str, Any]
 
 
 def mostrar_chunks(chunks: list[Chunk]) -> None:
-=======
-def mostrar_chunks(chunks: List[dict]) -> None:
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
     """Imprime chunks recuperados para transparencia del proceso RAG."""
     print("\n=== Chunks recuperados ===")
 
@@ -39,7 +32,7 @@ def mostrar_chunks(chunks: List[dict]) -> None:
         return
 
     for idx, chunk in enumerate(chunks, start=1):
-        print(f"\n[{idx}] Fuente: {chunk['source']} | Pagina: {chunk['page']} | Score: {chunk['score']}")
+        print(f"\n[{idx}] Fuente: {chunk['source']} | Pagina: {chunk['page']} | Score: {chunk['score']:.4f}")
         print("Texto:")
         print(chunk["text"])
 
@@ -89,7 +82,6 @@ def ejecutar_modo_comparacion(query: str, k: int) -> None:
     )
 
 
-<<<<<<< HEAD
 def ejecutar_consulta_con_reintento(modo: str, query: str, k: int) -> None:
     """Ejecuta una consulta y, si falta la coleccion, intenta auto-ingestion.
 
@@ -106,19 +98,24 @@ def ejecutar_consulta_con_reintento(modo: str, query: str, k: int) -> None:
         if "does not exist" not in error_texto and "collection" not in error_texto:
             raise
 
-        print("\nNo se encontro la coleccion vectorial. Ejecutando ingestion automatica...")
-        resultado = ingestar_corpus()
-        print("Ingestion completada:")
-        print(resultado)
+        print("\n⚠️ No se encontró la colección vectorial. Ejecutando ingestión automática...")
+        try:
+            resultado = ingestar_corpus()
+            print("✅ Ingestión completada:")
+            print(f"   - PDFs: {resultado.get('total_pdfs', 'N/A')}")
+            print(f"   - Chunks: {resultado.get('total_chunks', 'N/A')}")
+            print("Reintentando consulta...")
+        except Exception as ingest_exc:
+            print(f"❌ Error durante la ingestión automática: {ingest_exc}")
+            return  # Salir si la ingestión falla
 
+    # Reintento de la consulta después de la ingestión
     if modo == "1":
         ejecutar_modo_solo_rag(query=query, k=k)
     else:
         ejecutar_modo_comparacion(query=query, k=k)
 
 
-=======
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
 def main() -> None:
     """Punto de entrada de la CLI interactiva."""
     print("RAG Academico - Reducir Alucinaciones con Evidencia y Citas")
@@ -158,18 +155,10 @@ def main() -> None:
             continue
 
         try:
-<<<<<<< HEAD
             ejecutar_consulta_con_reintento(modo=modo, query=query, k=k)
-=======
-            if modo == "1":
-                ejecutar_modo_solo_rag(query=query, k=k)
-            else:
-                ejecutar_modo_comparacion(query=query, k=k)
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-
-            print("\nConsulta registrada en logs/consultas.json")
+            print("\n✅ Consulta registrada en logs/consultas.json")
         except Exception as exc:
-            print(f"Ocurrio un error durante la consulta: {exc}")
+            print(f"❌ Ocurrió un error inesperado durante la consulta: {exc}")
 
 
 if __name__ == "__main__":

@@ -8,11 +8,7 @@ Incluye dos funciones requeridas por PP1:
 from __future__ import annotations
 
 import os
-<<<<<<< HEAD
-from typing import Any, List
-=======
-from typing import Dict, List
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+from typing import Any, Dict, List
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -39,12 +35,6 @@ SYSTEM_PROMPT_SIN_RAG = (
 
 
 <<<<<<< HEAD
-def _crear_cliente() -> OpenAI:
-    """Crea cliente OpenAI validando que exista API key."""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
-=======
 def _validar_api_key(api_key: str | None) -> str:
     """Valida OPENAI_API_KEY para evitar errores de autenticacion comunes."""
     if not api_key:
@@ -64,7 +54,6 @@ def _validar_api_key(api_key: str | None) -> str:
 def _crear_cliente() -> OpenAI:
     """Crea cliente OpenAI validando que exista API key."""
     api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
     return OpenAI(api_key=api_key)
 
 
@@ -87,10 +76,7 @@ def responder_sin_rag(query: str, model: str = DEFAULT_MODEL) -> str:
 
 
 <<<<<<< HEAD
-def responder_con_rag(query: str, chunks: List[dict[str, Any]], model: str = DEFAULT_MODEL) -> str:
-=======
-def responder_con_rag(query: str, chunks: List[Dict], model: str = DEFAULT_MODEL) -> str:
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+def responder_con_rag(query: str, chunks: List[Dict[str, Any]], model: str = DEFAULT_MODEL) -> str:
     """Genera respuesta inyectando chunks recuperados como evidencia.
 
     Si no hay chunks, se devuelve un mensaje explicito de evidencia insuficiente,
