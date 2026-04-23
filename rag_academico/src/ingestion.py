@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Dict, List, Tuple
 
 import chromadb
+import numpy as np
+from chromadb.api.types import Embedding, Metadata
 from dotenv import load_dotenv
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from openai import OpenAI
@@ -81,7 +83,7 @@ def _crear_chunks(
     paginas: List[Tuple[int, str]],
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
-) -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
+) -> Tuple[List[str], List[Metadata], List[str]]:
     """Genera chunks a partir del texto por paginas y prepara metadatos/ids.
 
     Metadatos requeridos por el enunciado:
@@ -96,7 +98,7 @@ def _crear_chunks(
     )
 
     documentos: List[str] = []
-    metadatos: List[Dict[str, Any]] = []
+    metadatos: List[Metadata] = []
     ids: List[str] = []
 
     for numero_pagina, texto_pagina in paginas:
@@ -118,7 +120,7 @@ def _crear_chunks(
     return documentos, metadatos, ids
 
 
-def _crear_embeddings(textos: List[str], cliente_openai: OpenAI) -> List[List[float]]:
+def _crear_embeddings(textos: List[str], cliente_openai: OpenAI) -> List[Embedding]:
     """Crea embeddings en lotes para mejorar rendimiento y estabilidad.
 
     Chroma permite almacenar embeddings precalculados, lo cual nos da control
@@ -127,13 +129,16 @@ def _crear_embeddings(textos: List[str], cliente_openai: OpenAI) -> List[List[fl
     if not textos:
         return []
 
-    embeddings: List[List[float]] = []
+    embeddings: List[Embedding] = []
     batch_size = 64
 
     for i in range(0, len(textos), batch_size):
         batch = textos[i : i + batch_size]
         respuesta = cliente_openai.embeddings.create(model=EMBEDDING_MODEL, input=batch)
-        embeddings.extend([item.embedding for item in respuesta.data])
+        for item in respuesta.data:
+            # Chroma tipa Embedding como ndarray[int32 | float32].
+            vector: Embedding = np.asarray(item.embedding, dtype=np.float32)
+            embeddings.append(vector)
 
     return embeddings
 
@@ -176,7 +181,7 @@ def ingestar_corpus(
         raise FileNotFoundError("No se encontraron PDFs en la carpeta corpus/.)")
 
     todos_los_documentos: List[str] = []
-    todos_los_metadatos: List[Dict[str, Any]] = []
+    todos_los_metadatos: List[Metadata] = []
     todos_los_ids: List[str] = []
 
     for pdf_path in pdfs:

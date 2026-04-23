@@ -12,12 +12,20 @@ Flujo general:
 from __future__ import annotations
 
 from typing import Any
-from typing import List
 
-from rag_academico.src.generation import responder_con_rag, responder_sin_rag
-from rag_academico.src.ingestion import ingestar_corpus
-from rag_academico.src.logger import guardar_consulta
-from rag_academico.src.retrieval import recuperar_chunks
+try:
+    # Ejecucion recomendada: python -m rag_academico.main
+    from rag_academico.src.generation import responder_con_rag, responder_sin_rag
+    from rag_academico.src.ingestion import ingestar_corpus
+    from rag_academico.src.logger import guardar_consulta
+    from rag_academico.src.retrieval import recuperar_chunks
+except ModuleNotFoundError:
+    # Fallback para ejecucion directa del archivo:
+    # python rag_academico/main.py
+    from src.generation import responder_con_rag, responder_sin_rag
+    from src.ingestion import ingestar_corpus
+    from src.logger import guardar_consulta
+    from src.retrieval import recuperar_chunks
 
 
 Chunk = dict[str, Any]

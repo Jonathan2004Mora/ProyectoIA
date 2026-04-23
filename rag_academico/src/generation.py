@@ -34,7 +34,6 @@ SYSTEM_PROMPT_SIN_RAG = (
 )
 
 
-<<<<<<< HEAD
 def _validar_api_key(api_key: str | None) -> str:
     """Valida OPENAI_API_KEY para evitar errores de autenticacion comunes."""
     if not api_key:
@@ -75,7 +74,6 @@ def responder_sin_rag(query: str, model: str = DEFAULT_MODEL) -> str:
     return completion.choices[0].message.content or "No se obtuvo respuesta del modelo."
 
 
-<<<<<<< HEAD
 def responder_con_rag(query: str, chunks: List[Dict[str, Any]], model: str = DEFAULT_MODEL) -> str:
     """Genera respuesta inyectando chunks recuperados como evidencia.
 
@@ -92,11 +90,7 @@ def responder_con_rag(query: str, chunks: List[Dict[str, Any]], model: str = DEF
         )
 
     # Construimos un bloque de contexto con trazabilidad por fuente y pagina.
-<<<<<<< HEAD
     contexto_formateado: List[str] = []
-=======
-    contexto_formateado = []
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
     for idx, chunk in enumerate(chunks, start=1):
         fuente = chunk.get("source", "desconocido")
         pagina = chunk.get("page", "?")
