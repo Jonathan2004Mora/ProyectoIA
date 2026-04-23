@@ -1,189 +1,170 @@
-# RAG Academico - Reducir Alucinaciones con Evidencia y Citas
+# RAG Academico
 
-Proyecto para EIF420 (Universidad de Costa Rica) orientado a comparar respuestas de un modelo:
-- SIN RAG (sin evidencia externa)
-- CON RAG (con evidencia recuperada de documentos del curso)
+Sistema de Retrieval-Augmented Generation (RAG) para consultas academicas con trazabilidad por fuente y pagina.
 
-El objetivo es reducir alucinaciones usando fragmentos del corpus y citas de fuente/pagina.
+El proyecto incluye:
+- Ingestion de PDFs a ChromaDB.
+- Recuperacion semantica de fragmentos relevantes.
+- Generacion de respuesta en modo SIN RAG y CON RAG.
+- Logging estructurado de consultas para analisis y evidencia.
 
-## Estructura del proyecto
+## Objetivo
+
+Reducir alucinaciones del modelo obligando a responder con evidencia recuperada.
+En modo CON RAG, la respuesta debe apoyarse en los fragmentos entregados y reportar fuentes.
+
+## Estructura real del proyecto
 
 ```text
 rag_academico/
-├── corpus/                 # PDFs y documentos del curso
-├── chroma_db/              # Vector store persistente
-├── logs/                   # JSON logs de consultas
-<<<<<<< HEAD
-├── app.py                  # Interfaz Streamlit PP2
-=======
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-├── src/
-│   ├── __init__.py
-│   ├── init.py             # Archivo de compatibilidad solicitado
-│   ├── ingestion.py        # Carga y chunking de documentos
-│   ├── retrieval.py        # Busqueda en ChromaDB
-│   ├── generation.py       # Llamada OpenAI con/sin contexto
-<<<<<<< HEAD
-│   ├── logger.py           # Guardado de logs en JSON
-│   ├── evaluator.py        # Evaluador LLM con Structured Outputs
-│   └── experimenter.py     # Comparador de configuraciones (A/B/C/D)
-=======
-│   └── logger.py           # Guardado de logs en JSON
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-├── main.py                 # CLI principal
-├── demo_pp1.py             # Script de demostracion automatica
+├── corpus/                  # PDFs fuente
+├── chroma_db/               # Base vectorial persistente
+├── logs/                    # Salidas JSON de consultas/experimentos
+├── main.py                  # CLI interactiva principal
+├── demo_pp1.py              # Demo automatica de PP1
 ├── requirements.txt
-└── README.md
+├── README.md
+└── src/
+    ├── __init__.py
+    ├── init.py
+    ├── ingestion.py         # Carga, chunking, embeddings y upsert
+    ├── retrieval.py         # Top-k retrieval desde Chroma
+    ├── generation.py        # Respuesta con/sin contexto RAG
+    ├── logger.py            # Persistencia en logs/consultas.json
+    ├── evaluator.py         # Evaluacion estructurada de respuestas
+    └── experimenter.py      # Corridas comparativas de configuracion
 ```
 
 ## Requisitos
 
-- Python 3.10+
-- API key de OpenAI
+- Python 3.11+
+- API key valida de OpenAI
 
 ## Instalacion
 
-1. Entrar a la carpeta del proyecto:
+### 1) Entrar al proyecto
 
 ```bash
 cd rag_academico
 ```
 
-2. Crear y activar entorno virtual (recomendado):
+### 2) Crear entorno virtual
 
 ```bash
 python -m venv .venv
-# Windows PowerShell
-<<<<<<< HEAD
-& .\.venv\Scripts\Activate.ps1
-=======
-.venv\Scripts\Activate.ps1
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-# Linux/macOS
-# source .venv/bin/activate
 ```
 
-3. Instalar dependencias:
+### 3) Activar entorno virtual
+
+Windows PowerShell:
+
+```powershell
+& .\.venv\Scripts\Activate.ps1
+```
+
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+### 4) Instalar dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Crear archivo `.env` en la raiz del proyecto con:
+### 5) Configurar variables de entorno
+
+Crear archivo `.env` en la carpeta `rag_academico/`:
 
 ```env
-OPENAI_API_KEY=tu_api_key_aqui
-# Opcional:
+OPENAI_API_KEY=tu_api_key_real
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-## Uso
+`OPENAI_MODEL` es opcional; si no se define, se usa el default del codigo.
 
-### 1) Ingestion del corpus
+## Flujo recomendado de uso
 
-Coloca los PDFs del curso dentro de `corpus/` y ejecuta:
+### Paso 1: Preparar corpus
+
+Copiar PDFs a `rag_academico/corpus/`.
+
+### Paso 2: Ejecutar ingestion
+
+Desde la carpeta `rag_academico/`:
 
 ```bash
 python -m src.ingestion
 ```
 
-Esto extrae texto, hace chunking (`chunk_size=500`, `chunk_overlap=50`) y crea/actualiza la coleccion en ChromaDB.
+Que hace este paso:
+- Extrae texto por pagina.
+- Aplica chunking (tamano y solapamiento configurables).
+- Genera embeddings.
+- Inserta/actualiza en ChromaDB con metadatos (`source`, `page`, `chunk`).
 
-### 2) CLI interactivo
+### Paso 3: Ejecutar CLI principal
+
+Forma recomendada (desde la raiz del repo `RAG_AI/`):
 
 ```bash
-python main.py
+python -m rag_academico.main
+```
+
+Forma alternativa (desde cualquier ruta):
+
+```bash
+python rag_academico/main.py
 ```
 
 La CLI permite:
-- Elegir modo: Solo RAG o Comparacion RAG vs Sin-RAG.
-- Mostrar chunks recuperados antes de la respuesta.
-- Guardar cada consulta en `logs/consultas.json`.
+- Elegir modo `Solo RAG` o `Comparacion RAG vs Sin-RAG`.
+- Ver chunks recuperados (transparencia).
+- Registrar cada consulta en `logs/consultas.json`.
+- Reintento automatico con ingestion si la coleccion no existe.
 
-### 3) Demo automatica para PP1
+### Paso 4 (opcional): Ejecutar demo automatica PP1
+
+Desde la carpeta `rag_academico/`:
 
 ```bash
 python demo_pp1.py
 ```
 
-Este script ejecuta 3 consultas de prueba en modo comparacion y guarda resultados en logs para evidencia academica.
+Ejecuta consultas predefinidas y guarda resultados para evidencia.
 
-<<<<<<< HEAD
-### 4) Interfaz profesional PP2 (Streamlit)
+## Salidas generadas
 
-```bash
-python -m streamlit run app.py
-```
+- `logs/consultas.json`: historial de consultas y respuestas.
+- `chroma_db/`: almacenamiento persistente de embeddings y metadatos.
 
-Si estas ubicado un nivel arriba (en `RAG_AI/`), ejecuta:
+## Modulos clave
 
-```bash
-cd rag_academico
-& .\.venv\Scripts\Activate.ps1
-python -m streamlit run app.py
-```
+- `src/ingestion.py`: ingestion y indexacion vectorial.
+- `src/retrieval.py`: recuperacion top-k por similitud.
+- `src/generation.py`: respuesta del modelo con o sin RAG.
+- `src/logger.py`: persistencia JSON.
+- `main.py`: orquestacion de flujo interactivo.
 
-Pestanas disponibles:
-- 🔍 Consulta RAG: evidencia recuperada + respuesta + evaluacion automatica.
-- ⚔️ RAG vs Sin RAG: comparacion lado a lado.
-- 🧪 Experimentos: benchmark de configuraciones A/B/C/D.
-- 📊 Historial: consultas registradas desde logs.
+## Troubleshooting rapido
 
-### 5) Experimentos PP2 por script
+### Error: OPENAI_API_KEY no encontrada
 
-```bash
-python -m src.experimenter
-```
+Verificar `.env` y que el entorno virtual activo tenga acceso al archivo.
 
-Esto ejecuta al menos 5 queries sobre estas configuraciones:
-- Config A: chunk_size=300, top_k=2
-- Config B: chunk_size=300, top_k=5
-- Config C: chunk_size=700, top_k=2
-- Config D: chunk_size=700, top_k=5
+### Error: coleccion no existe
 
-Los resultados y promedios se guardan en `logs/experimentos.json`.
+Ejecutar ingestion manualmente o dejar que `main.py` haga auto-ingestion.
 
-=======
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-## Detalle de modulos
+### Error de importacion al ejecutar main
 
-- `src/ingestion.py`:
-  - Carga todos los PDFs de `corpus/`.
-  - Extrae texto por pagina con `pypdf`.
-  - Aplica chunking con `RecursiveCharacterTextSplitter`.
-  - Indexa en ChromaDB con metadatos: `source`, `page`, `chunk`.
+Usar `python -m rag_academico.main` desde la raiz del repo.
 
-- `src/retrieval.py`:
-  - Recupera top-k chunks relevantes (default `k=3`).
-  - Retorna estructura: `{text, source, page, score}`.
+## Buenas practicas para el equipo
 
-- `src/generation.py`:
-  - `responder_sin_rag(query)` para baseline.
-  - `responder_con_rag(query, chunks)` para respuesta guiada por evidencia y citas.
-
-- `src/logger.py`:
-  - Guarda logs en JSON con timestamp, query, modo, chunks y respuesta.
-
-<<<<<<< HEAD
-- `src/evaluator.py`:
-  - Define el modelo estructurado `EvaluacionRAG` con Pydantic.
-  - Implementa `EvaluadorRAG.evaluar(query, respuesta, chunks)` usando OpenAI + Structured Outputs.
-  - Retorna fallback seguro si falla el parseo del LLM.
-
-- `src/experimenter.py`:
-  - Corre pruebas comparativas de configuraciones de chunking y retrieval.
-  - Evalua cada respuesta con `EvaluadorRAG`.
-  - Genera resumen con promedios de faithfulness, relevancia, porcentaje de alucinaciones y veredicto mas frecuente.
-
-=======
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
-## Prompt del sistema para RAG
-
-El modo RAG usa el siguiente prompt de sistema:
-
-> "Eres un asistente academico. Responde UNICAMENTE basandote en los fragmentos de documentos proporcionados. Al final de tu respuesta, incluye una seccion '📚 Fuentes:' listando cada documento y pagina usada. Si la informacion no esta en los fragmentos, di explicitamente que no tienes evidencia suficiente."
-
-## Notas academicas
-
-- Si no hay evidencia suficiente en chunks recuperados, el sistema lo indica explicitamente.
-- Los logs permiten comparar calidad, trazabilidad y alucinaciones entre modos.
+- Mantener `corpus/` con documentos versionados si corresponde a pruebas compartidas.
+- Evitar subir claves en `.env`.
+- Correr ingestion despues de cambios grandes en corpus.
+- Validar con una consulta de control antes de demos.
