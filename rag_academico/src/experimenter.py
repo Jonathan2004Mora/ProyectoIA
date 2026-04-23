@@ -11,13 +11,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
-<<<<<<< HEAD
 from typing import Any, TypedDict, cast
 
 import chromadb
-=======
-from typing import Any
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 
 from src.evaluator import EvaluadorRAG
 from src.generation import responder_con_rag
@@ -53,13 +49,26 @@ class ResultadoPorConfig(TypedDict):
     resultados: list[ResultadoConsulta]
 
 
+class ResumenConfig(TypedDict):
+    """Metricas agregadas por configuracion."""
+
+    config: str
+    chunk_size: int
+    top_k: int
+    promedio_faithfulness: float
+    promedio_relevancia: float
+    porcentaje_alucinaciones: float
+    veredicto_mas_frecuente: str
+
+
 class CorridaExperimentos(TypedDict):
     """Estructura principal persistida en logs/experimentos.json."""
 
     timestamp: str
     queries: list[str]
     resultados_por_config: list[ResultadoPorConfig]
-    resumen_por_config: list[dict[str, Any]]
+    resumen_por_config: list[ResumenConfig]
+
 
 # Se incluyen al menos 5 preguntas para cumplir el requerimiento del PP2.
 QUERIES_PRUEBA = [
@@ -78,13 +87,8 @@ CONFIGURACIONES: list[ConfiguracionExperimento] = [
 ]
 
 
-<<<<<<< HEAD
 def _coleccion_tiene_datos(chroma_dir: str, collection_name: str) -> bool:
-    """Verifica si una coleccion ya esta indexada para evitar reingestar siempre.
-
-    Este chequeo reduce drasticamente tiempo/costo en corridas repetidas de
-    experimentos, porque la ingestión (embeddings + upsert) suele ser lo mas caro.
-    """
+    """Verifica si una coleccion ya esta indexada para evitar reingestar siempre."""
     try:
         chroma_client = chromadb.PersistentClient(path=chroma_dir)
         collection = chroma_client.get_collection(name=collection_name)
@@ -93,44 +97,38 @@ def _coleccion_tiene_datos(chroma_dir: str, collection_name: str) -> bool:
         return False
 
 
-=======
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 def _guardar_resultado_experimento(
     entrada: dict[str, Any], log_path: Path = EXPERIMENTOS_LOG_PATH
 ) -> None:
     """Persistencia acumulada de ejecuciones de experimentos en JSON."""
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    acumulado: list[dict[str, Any]] = []
     if log_path.exists():
         try:
-            data = json.loads(log_path.read_text(encoding="utf-8"))
-            if not isinstance(data, list):
-                data = []
+            data: object = json.loads(log_path.read_text(encoding="utf-8"))
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict):
+                        acumulado.append(cast(dict[str, Any], item))
         except json.JSONDecodeError:
-            data = []
-    else:
-        data = []
+            acumulado = []
 
-    data_list: list[dict[str, Any]] = cast(list[dict[str, Any]], data)
-    data_list.append(entrada)
-    log_path.write_text(json.dumps(data_list, ensure_ascii=False, indent=2), encoding="utf-8")
+    acumulado.append(entrada)
+    log_path.write_text(json.dumps(acumulado, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 def _resumen_configuracion(
     nombre: str,
     chunk_size: int,
     top_k: int,
-<<<<<<< HEAD
     resultados: list[ResultadoConsulta],
-=======
-    resultados: list[dict[str, Any]],
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
-) -> dict[str, Any]:
+) -> ResumenConfig:
     """Calcula metricas agregadas por configuracion para analisis comparativo."""
-    scores_faith = [r["evaluacion"]["score_faithfulness"] for r in resultados]
-    scores_relev = [r["evaluacion"]["score_relevancia"] for r in resultados]
-    alucinaciones = [r["evaluacion"]["tiene_alucinacion"] for r in resultados]
-    veredictos = [r["evaluacion"]["veredicto"] for r in resultados]
+    scores_faith = [float(r["evaluacion"].get("score_faithfulness", 0.0)) for r in resultados]
+    scores_relev = [float(r["evaluacion"].get("score_relevancia", 0.0)) for r in resultados]
+    alucinaciones = [bool(r["evaluacion"].get("tiene_alucinacion", True)) for r in resultados]
+    veredictos = [str(r["evaluacion"].get("veredicto", "ALUCINACION")) for r in resultados]
 
     veredicto_mas_frecuente = Counter(veredictos).most_common(1)[0][0] if veredictos else "ALUCINACION"
 
@@ -152,11 +150,8 @@ def ejecutar_experimentos(
     chroma_dir: str = "chroma_db",
     corpus_dir: str = "corpus",
     overlap: int = 50,
-<<<<<<< HEAD
     force_reindex: bool = False,
     generation_model: str = "gpt-4o-mini",
-=======
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 ) -> dict[str, Any]:
     """Ejecuta el benchmark de configuraciones y retorna resultados completos."""
     evaluador = EvaluadorRAG()
@@ -187,11 +182,7 @@ def ejecutar_experimentos(
                 chunk_overlap=overlap,
             )
 
-<<<<<<< HEAD
         resultados_config: list[ResultadoConsulta] = []
-=======
-        resultados_config: list[dict[str, Any]] = []
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
         for query in queries_ejecucion:
             chunks = recuperar_chunks(
                 query=query,
