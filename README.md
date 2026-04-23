@@ -12,7 +12,8 @@
 
 ## Objetivo y Audiencia
 
-Esta entrega corresponde a un MVP funcional centrado en el pipeline base de RAG para consultas academicas.
+Este sistema está dirigido principalmente a estudiantes universitarios de carreras técnicas que necesitan consultar documentos académicos y obtener respuestas verificables con citas explícitas, evitando información generada sin respaldo real.
+Como público secundario, también es útil para docentes, investigadores y profesionales en dominios donde responder sin evidencia tiene consecuencias directas (salud, derecho, educación), ya que el sistema muestra siempre el fragmento y la fuente que respaldaron cada respuesta.
 
 ### Que hace esta entrega (MVP)
 
@@ -257,7 +258,7 @@ Brecha principal hacia PP2/TI:
 
 Direccion del proyecto:
 
-- Evolucionar de MVP funcional a entrega academica completa, reproducible y defendible en vivo.
+- Evolucionar de MVP funcional a entrega academica completa y reproducible.
 
 Funcionalidades y entregables pendientes para cumplir G5_RAG_spec.md:
 
