@@ -1,0 +1,25 @@
+# Dependencies
+.venv/
+venv/
+ENV/
+
+# Databases
+*.sqlite3
+
+# Logs
+/rag_academico/logs/
+
+# ChromaDB
+/chroma_db/
+/rag_academico/chroma_db/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg

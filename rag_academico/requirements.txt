@@ -1,0 +1,11 @@
+openai>=1.30.0
+chromadb>=0.5.0
+pypdf>=4.2.0
+langchain-text-splitters>=0.2.2
+python-dotenv>=1.0.1
+<<<<<<< HEAD
+streamlit>=1.35.0
+pydantic>=2.7.0
+pandas>=2.2.0
+=======
+>>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
