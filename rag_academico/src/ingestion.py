@@ -12,11 +12,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-<<<<<<< HEAD
-from typing import Any, List, Tuple, cast
-=======
-from typing import Dict, List, Tuple
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+from typing import Any, Dict, List, Tuple
 
 import chromadb
 from dotenv import load_dotenv
@@ -32,7 +28,6 @@ COLLECTION_NAME = "eif420_corpus"
 EMBEDDING_MODEL = "text-embedding-3-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
-<<<<<<< HEAD
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -40,7 +35,6 @@ def _resolver_ruta(ruta: str) -> Path:
     """Resuelve rutas relativas respecto a la raiz del proyecto rag_academico."""
     path = Path(ruta)
     return path if path.is_absolute() else PROJECT_ROOT / path
-=======
 
 
 def _validar_api_key(api_key: str | None) -> str:
@@ -61,7 +55,6 @@ def _validar_api_key(api_key: str | None) -> str:
         )
 
     return clave
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
 
 
 def _extraer_paginas_pdf(pdf_path: Path) -> List[Tuple[int, str]]:
@@ -88,11 +81,7 @@ def _crear_chunks(
     paginas: List[Tuple[int, str]],
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
-<<<<<<< HEAD
-) -> Tuple[List[str], List[dict[str, Any]], List[str]]:
-=======
-) -> Tuple[List[str], List[Dict], List[str]]:
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+) -> Tuple[List[str], List[Dict[str, Any]], List[str]]:
     """Genera chunks a partir del texto por paginas y prepara metadatos/ids.
 
     Metadatos requeridos por el enunciado:
@@ -107,11 +96,7 @@ def _crear_chunks(
     )
 
     documentos: List[str] = []
-<<<<<<< HEAD
-    metadatos: List[dict[str, Any]] = []
-=======
-    metadatos: List[Dict] = []
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+    metadatos: List[Dict[str, Any]] = []
     ids: List[str] = []
 
     for numero_pagina, texto_pagina in paginas:
@@ -157,10 +142,9 @@ def ingestar_corpus(
     corpus_dir: str = "corpus",
     chroma_dir: str = "chroma_db",
     collection_name: str = COLLECTION_NAME,
-<<<<<<< HEAD
     chunk_size: int = CHUNK_SIZE,
     chunk_overlap: int = CHUNK_OVERLAP,
-) -> dict[str, int]:
+) -> Dict[str, int]:
     """Ingresa todos los PDFs en ChromaDB y retorna estadisticas del proceso.
 
     Args:
@@ -170,9 +154,7 @@ def ingestar_corpus(
         chunk_size: Tamano maximo de cada fragmento de texto.
         chunk_overlap: Solapamiento entre fragmentos consecutivos.
     """
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
+    api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
 
     if chunk_size <= 0:
         raise ValueError("chunk_size debe ser un entero positivo.")
@@ -188,42 +170,23 @@ def ingestar_corpus(
     carpeta_corpus = _resolver_ruta(corpus_dir)
     if not carpeta_corpus.exists():
         raise FileNotFoundError(f"No existe la carpeta de corpus: {carpeta_corpus}")
-=======
-) -> Dict[str, int]:
-    """Ingresa todos los PDFs en ChromaDB y retorna estadisticas del proceso."""
-    api_key = _validar_api_key(os.getenv("OPENAI_API_KEY"))
-
-    cliente_openai = OpenAI(api_key=api_key)
-
-    carpeta_corpus = Path(corpus_dir)
-    if not carpeta_corpus.exists():
-        raise FileNotFoundError(f"No existe la carpeta de corpus: {corpus_dir}")
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
 
     pdfs = sorted(carpeta_corpus.glob("*.pdf"))
     if not pdfs:
-        raise FileNotFoundError("No se encontraron PDFs en la carpeta corpus/.")
+        raise FileNotFoundError("No se encontraron PDFs en la carpeta corpus/.)")
 
     todos_los_documentos: List[str] = []
-<<<<<<< HEAD
-    todos_los_metadatos: List[dict[str, Any]] = []
-=======
-    todos_los_metadatos: List[Dict] = []
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+    todos_los_metadatos: List[Dict[str, Any]] = []
     todos_los_ids: List[str] = []
 
     for pdf_path in pdfs:
         paginas = _extraer_paginas_pdf(pdf_path)
-<<<<<<< HEAD
         documentos, metadatos, ids = _crear_chunks(
             pdf_path.name,
             paginas,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
         )
-=======
-        documentos, metadatos, ids = _crear_chunks(pdf_path.name, paginas)
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
 
         todos_los_documentos.extend(documentos)
         todos_los_metadatos.extend(metadatos)
@@ -236,40 +199,32 @@ def ingestar_corpus(
     embeddings = _crear_embeddings(todos_los_documentos, cliente_openai)
 
     # PersistentClient guarda la base vectorial en disco para reutilizarla.
-<<<<<<< HEAD
     chroma_path = _resolver_ruta(chroma_dir)
     chroma_client = chromadb.PersistentClient(path=str(chroma_path))
-=======
-    chroma_client = chromadb.PersistentClient(path=chroma_dir)
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
     collection = chroma_client.get_or_create_collection(name=collection_name)
 
     # upsert actualiza o inserta segun el id, evitando duplicaciones al re-ejecutar.
     collection.upsert(
         ids=todos_los_ids,
         documents=todos_los_documentos,
-<<<<<<< HEAD
-        metadatas=cast(Any, todos_los_metadatos),
-        embeddings=cast(Any, embeddings),
-=======
-        metadatas=todos_los_metadatos,
         embeddings=embeddings,
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+        metadatas=todos_los_metadatos,
     )
 
     return {
-        "archivos_procesados": len(pdfs),
-        "chunks_indexados": len(todos_los_documentos),
-<<<<<<< HEAD
-        "chunk_size": chunk_size,
-        "chunk_overlap": chunk_overlap,
-=======
->>>>>>> aef98f5 (PP1: RAG academico base con ingestion, retrieval, generation y demo)
+        "total_pdfs": len(pdfs),
+        "total_paginas": len(todos_los_metadatos),
+        "total_chunks": len(todos_los_documentos),
     }
 
 
 if __name__ == "__main__":
-    # Punto de entrada rapido para pruebas de ingestión desde terminal.
-    resultado = ingestar_corpus()
-    print("Ingestion completada:")
-    print(resultado)
+    # Este bloque permite ejecutar el modulo directamente para testeo.
+    # Ejemplo: python -m src.ingestion
+    try:
+        stats = ingestar_corpus()
+        print("✅ Ingestión completada con éxito.")
+        print(f"   - PDFs procesados: {stats['total_pdfs']}")
+        print(f"   - Chunks creados: {stats['total_chunks']}")
+    except (ValueError, FileNotFoundError) as e:
+        print(f"❌ Error durante la ingestión: {e}")
