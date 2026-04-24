@@ -1,60 +1,71 @@
-# RAG Academico
+# Integrantes
 
-Sistema de Retrieval-Augmented Generation (RAG) para consultas academicas con trazabilidad por fuente y pagina.
+- Jose Andres Gonzalez Martinez
+- Fabricio Herrera Fuentes
+- Santiago Coronado Dejuk
+- Jonathan Mora Castro
+- Josue Navarro Sanchez
 
-El proyecto incluye:
-- Ingestion de PDFs a ChromaDB.
-- Recuperacion semantica de fragmentos relevantes.
-- Generacion de respuesta en modo SIN RAG y CON RAG.
-- Logging estructurado de consultas para analisis y evidencia.
+## RAG Academico (MVP)
 
-## Objetivo
+> Prototipo academico de Retrieval-Augmented Generation que indexa PDFs, recupera evidencia relevante y compara respuestas con y sin recuperacion para reducir alucinaciones.
 
-Reducir alucinaciones del modelo obligando a responder con evidencia recuperada.
-En modo CON RAG, la respuesta debe apoyarse en los fragmentos entregados y reportar fuentes.
+## Objetivo y Audiencia
 
-## Estructura real del proyecto
+Este sistema está dirigido principalmente a estudiantes universitarios de carreras técnicas que necesitan consultar documentos académicos y obtener respuestas verificables con citas explícitas, evitando información generada sin respaldo real.
+Como público secundario, también es útil para docentes, investigadores y profesionales en dominios donde responder sin evidencia tiene consecuencias directas (salud, derecho, educación), ya que el sistema muestra siempre el fragmento y la fuente que respaldaron cada respuesta.
 
-```text
-rag_academico/
-├── corpus/                  # PDFs fuente
-├── chroma_db/               # Base vectorial persistente
-├── logs/                    # Salidas JSON de consultas/experimentos
-├── main.py                  # CLI interactiva principal
-├── demo_pp1.py              # Demo automatica de PP1
-├── requirements.txt
-├── README.md
-└── src/
-    ├── __init__.py
-    ├── init.py
-    ├── ingestion.py         # Carga, chunking, embeddings y upsert
-    ├── retrieval.py         # Top-k retrieval desde Chroma
-    ├── generation.py        # Respuesta con/sin contexto RAG
-    ├── logger.py            # Persistencia en logs/consultas.json
-    ├── evaluator.py         # Evaluacion estructurada de respuestas
-    └── experimenter.py      # Corridas comparativas de configuracion
-```
+### Que hace esta entrega (MVP)
 
-## Requisitos
+- Carga e indexa un corpus de documentos PDF en una base vectorial local.
+- Recupera fragmentos relevantes para una consulta (top-k).
+- Genera respuestas en dos modos: sin RAG (baseline) y con RAG (con evidencia recuperada).
+- Registra trazabilidad de consultas y respuestas en logs JSON.
+
+### Que problema resuelve
+
+- Reduce respuestas sin soporte explicito al obligar que el modo con RAG se base en evidencia recuperada.
+- Permite auditar el comportamiento del sistema mediante logs y comparacion entre escenarios.
+
+### A quien esta dirigida
+
+- Estudiantes o investigadores que necesitan un prototipo reproducible para estudiar alucinaciones en QA academico.
+
+## Configuracion y Requisitos
+
+### Lenguaje y stack
 
 - Python 3.11+
-- API key valida de OpenAI
+- Arquitectura modular en scripts Python (CLI)
+- Base vectorial local con ChromaDB
+- API de OpenAI para embeddings y generacion
 
-## Instalacion
+### Librerias clave
 
-### 1) Entrar al proyecto
+- openai
+- chromadb
+- numpy
+- pypdf
+- langchain-text-splitters
+- python-dotenv
+- pydantic
+- pandas (declarada en dependencias)
+
+## Instalacion paso a paso
+
+1. Entrar al proyecto:
 
 ```bash
 cd rag_academico
 ```
 
-### 2) Crear entorno virtual
+1. Crear entorno virtual:
 
 ```bash
 python -m venv .venv
 ```
 
-### 3) Activar entorno virtual
+1. Activar entorno virtual:
 
 Windows PowerShell:
 
@@ -68,103 +79,128 @@ Linux/macOS:
 source .venv/bin/activate
 ```
 
-### 4) Instalar dependencias
+1. Instalar dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5) Configurar variables de entorno
+## Guia de Ejecucion
 
-Crear archivo `.env` en la carpeta `rag_academico/`:
+## 1. Configuracion previa
+
+Crear archivo .env en la raiz de rag_academico con:
 
 ```env
 OPENAI_API_KEY=tu_api_key_real
 OPENAI_MODEL=gpt-4.1-mini
 ```
 
-`OPENAI_MODEL` es opcional; si no se define, se usa el default del codigo.
+Notas:
 
-## Flujo recomendado de uso
+- OPENAI_API_KEY es obligatoria.
+- OPENAI_MODEL es opcional; si no se define, el proyecto usa su valor por defecto.
 
-### Paso 1: Preparar corpus
+## 2. Comandos para ejecutar el proyecto
 
-Copiar PDFs a `rag_academico/corpus/`.
+1) Preparar corpus:
 
-### Paso 2: Ejecutar ingestion
+- Colocar archivos PDF en la carpeta corpus.
 
-Desde la carpeta `rag_academico/`:
+1) Ejecutar ingestion (indexacion):
 
 ```bash
 python -m src.ingestion
 ```
 
-Que hace este paso:
-- Extrae texto por pagina.
-- Aplica chunking (tamano y solapamiento configurables).
-- Genera embeddings.
-- Inserta/actualiza en ChromaDB con metadatos (`source`, `page`, `chunk`).
-
-### Paso 3: Ejecutar CLI principal
-
-Forma recomendada (desde la raiz del repo `RAG_AI/`):
+1) Ejecutar la CLI principal:
 
 ```bash
-python -m rag_academico.main
+python main.py
 ```
 
-Forma alternativa (desde cualquier ruta):
-
-```bash
-python rag_academico/main.py
-```
-
-La CLI permite:
-- Elegir modo `Solo RAG` o `Comparacion RAG vs Sin-RAG`.
-- Ver chunks recuperados (transparencia).
-- Registrar cada consulta en `logs/consultas.json`.
-- Reintento automatico con ingestion si la coleccion no existe.
-
-### Paso 4 (opcional): Ejecutar demo automatica PP1
-
-Desde la carpeta `rag_academico/`:
+1) Ejecutar demo automatica (opcional):
 
 ```bash
 python demo_pp1.py
 ```
 
-Ejecuta consultas predefinidas y guarda resultados para evidencia.
+1) Ejecutar experimentos comparativos (avance implementado):
 
-## Salidas generadas
+```bash
+python -m src.experimenter
+```
 
-- `logs/consultas.json`: historial de consultas y respuestas.
-- `chroma_db/`: almacenamiento persistente de embeddings y metadatos.
+## 3. Resultado esperado
 
-## Modulos clave
+Al ejecutar la CLI, el usuario deberia ver:
 
-- `src/ingestion.py`: ingestion y indexacion vectorial.
-- `src/retrieval.py`: recuperacion top-k por similitud.
-- `src/generation.py`: respuesta del modelo con o sin RAG.
-- `src/logger.py`: persistencia JSON.
-- `main.py`: orquestacion de flujo interactivo.
+- Chunks recuperados con fuente, pagina y score.
+- Respuesta del modelo en modo sin RAG y/o con RAG segun el flujo elegido.
+- Registro automatico en logs/consultas.json.
 
-## Troubleshooting rapido
+Al ejecutar experimentos, deberia generarse persistencia en logs/experimentos.json.
 
-### Error: OPENAI_API_KEY no encontrada
+## Estructura del Proyecto
 
-Verificar `.env` y que el entorno virtual activo tenga acceso al archivo.
+```text
+rag_academico/
+├── corpus/
+│   ├── Alucinaciones de la inteligencia artificial impacto en tecnologia, politica y sociedad.pdf
+│   ├── G5_RAG_spec.md
+│   ├── La nueva realidad de la educación ante los avances de la inteligencia artificial generativa.pdf
+│   ├── Redes neuronales artificiales fundamentos y aplicaciones.pdf
+│   └── Volley.pdf
+├── demo_pp1.py
+├── main.py
+├── README.md
+├── README2.md
+├── README4.md
+├── requirements.txt
+└── src/
+  ├── __init__.py
+  ├── evaluator.py
+  ├── experimenter.py
+  ├── generation.py
+  ├── ingestion.py
+  ├── init.py
+  ├── logger.py
+  └── retrieval.py
+```
 
-### Error: coleccion no existe
+## Estado Actual y Limitaciones
 
-Ejecutar ingestion manualmente o dejar que `main.py` haga auto-ingestion.
+## Estado actual (implementado)
 
-### Error de importacion al ejecutar main
+- Pipeline modular de RAG implementado:
+  - Ingestion: lectura de PDF, extraccion por pagina, chunking, embeddings y upsert a ChromaDB.
+  - Retrieval: embedding de consulta y recuperacion top-k con metadatos.
+  - Generacion: respuesta sin RAG y con RAG usando evidencia recuperada.
+  - Logging: persistencia JSON de consultas y respuestas.
 
-Usar `python -m rag_academico.main` desde la raiz del repo.
+- Comparacion de escenarios disponible:
+  - En CLI/demo: comparacion sin RAG vs con RAG.
+  - En experimentacion: 4 configuraciones de chunk_size y top_k.
 
-## Buenas practicas para el equipo
+- Evaluacion automatica basica implementada:
+  - Modulo evaluador con salida estructurada (faithfulness, relevancia, alucinacion, veredicto).
 
-- Mantener `corpus/` con documentos versionados si corresponde a pruebas compartidas.
-- Evitar subir claves en `.env`.
-- Correr ingestion despues de cambios grandes en corpus.
-- Validar con una consulta de control antes de demos.
+- Reproducibilidad basica:
+  - Archivo de dependencias y pasos de ejecucion documentados.
+
+## Notas y limitaciones actuales
+
+- Requiere `OPENAI_API_KEY` valida para embeddings y generacion.
+- Interfaz actual basada en consola (no incluye interfaz web).
+- No existe figura o diagrama del pipeline dentro del repositorio.
+
+## Roadmap (Vision Futura)
+
+Funcionalidades y entregables pendientes para cumplir G5_RAG_spec.md:
+
+1. Interfaz de usuario:  
+   - Disenar e implementar una interfaz (web) para consultas sin depender de la terminal.
+   - Mantener en la interfaz la trazabilidad actual: chunks recuperados, fuentes y paginas.
+
+1. Cierre TI final:
+   - Integrar PP1 y PP2 en un reporte tecnico breve con resultados, limitaciones, riesgos de alucinacion y recomendaciones.

@@ -1,6 +1,6 @@
 """Demo automatica para PP1.
 
-Este script ejecuta 3 consultas de prueba en modo comparacion:
+Este script ejecuta consultas de prueba basadas en el corpus en modo comparacion:
 - Respuesta SIN RAG
 - Respuesta CON RAG
 
@@ -16,9 +16,11 @@ from src.retrieval import recuperar_chunks
 
 
 CONSULTAS_DEMO = [
-    "Cual es la diferencia entre precision y recall en evaluacion de modelos?",
-    "Que es una matriz de confusion y para que se utiliza?",
-    "Que recomendaciones da el curso para evitar overfitting?",
+    "Que es el perceptron y cual fue su principal limitacion historica?",
+    "Como se relacionan los sesgos de los datos de entrenamiento con las alucinaciones de IA?",
+    "Que papel cumple la autoatencion en los modelos transformadores?",
+    "Por que en educacion no se recomienda prohibir ChatGPT, sino capacitar su uso etico?",
+    "Cual es la diferencia entre alucinaciones humanas y alucinaciones de inteligencia artificial?",
 ]
 
 

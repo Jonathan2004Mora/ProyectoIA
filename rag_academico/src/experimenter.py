@@ -70,13 +70,14 @@ class CorridaExperimentos(TypedDict):
     resumen_por_config: list[ResumenConfig]
 
 
-# Se incluyen al menos 5 preguntas para cumplir el requerimiento del PP2.
+# Se incluyen preguntas de distinta dificultad/cobertura para inducir
+# veredictos variados en la evaluacion (confiable, dudoso, alucinacion).
 QUERIES_PRUEBA = [
-    "Que es Retrieval-Augmented Generation y cual es su objetivo principal?",
-    "Como ayuda RAG a reducir alucinaciones en modelos de lenguaje?",
-    "Cual es la diferencia entre usar evidencia recuperada y responder solo con memoria parametric?",
-    "Que elementos deberia incluir una cita valida en una respuesta academica asistida por IA?",
-    "Que limitaciones se mencionan sobre la calidad de recuperacion en sistemas RAG?",
+    "Que son las alucinaciones de IA y cuales causas concretas menciona el articulo de Barria Huidobro?",
+    "En que se diferencian una red neuronal feedforward y una red recurrente segun el corpus?",
+    "Que impacto tuvo ChatGPT en la educacion y que recomendaciones eticas propone la literatura del corpus?",
+    "Contrasta fortalezas y limitaciones de los LLM usando evidencia de al menos dos documentos y explica un posible riesgo de sesgo.",
+    "Cual es la dosis de ibuprofeno recomendada para un nino de 5 anos con fiebre?",
 ]
 
 CONFIGURACIONES: list[ConfiguracionExperimento] = [
