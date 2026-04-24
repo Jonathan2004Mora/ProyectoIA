@@ -180,10 +180,10 @@ rag_academico/
 
 - Comparacion de escenarios disponible:
   - En CLI/demo: comparacion sin RAG vs con RAG.
-  - En experimentacion: 4 configuraciones de chunk_size y top_k.        VER ANALIZAR
+  - En experimentacion: 4 configuraciones de chunk_size y top_k.
 
 - Evaluacion automatica basica implementada:
-  - Modulo evaluador con salida estructurada (faithfulness, relevancia, alucinacion, veredicto).     REVISAR
+  - Modulo evaluador con salida estructurada (faithfulness, relevancia, alucinacion, veredicto).
 
 - Reproducibilidad basica:
   - Archivo de dependencias y pasos de ejecucion documentados.
@@ -201,9 +201,6 @@ Funcionalidades y entregables pendientes para cumplir G5_RAG_spec.md:
 1. Interfaz de usuario:  
    - Disenar e implementar una interfaz (web) para consultas sin depender de la terminal.
    - Mantener en la interfaz la trazabilidad actual: chunks recuperados, fuentes y paginas.
-
-1. Evidencia visual del pipeline:
-   - Agregar al menos un esquema del flujo RAG implementado.
 
 1. Cierre TI final:
    - Integrar PP1 y PP2 en un reporte tecnico breve con resultados, limitaciones, riesgos de alucinacion y recomendaciones.
