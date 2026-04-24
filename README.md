@@ -193,7 +193,6 @@ rag_academico/
 - Requiere `OPENAI_API_KEY` valida para embeddings y generacion.
 - Interfaz actual basada en consola (no incluye interfaz web).
 - No existe figura o diagrama del pipeline dentro del repositorio.
-- No hay suite de pruebas automatizadas para validacion del pipeline. REVISAR
 
 ## Roadmap (Vision Futura)
 
@@ -205,10 +204,6 @@ Funcionalidades y entregables pendientes para cumplir G5_RAG_spec.md:
 
 1. Evidencia visual del pipeline:
    - Agregar al menos un esquema del flujo RAG implementado.
-
-1. Consolidacion de evaluacion:
-   - Presentar resultados comparativos interpretados (sin RAG vs con RAG y configuraciones de chunk/top-k).
-   - Justificar por que una configuracion es preferible segun metricas y observaciones cualitativas.
 
 1. Cierre TI final:
    - Integrar PP1 y PP2 en un reporte tecnico breve con resultados, limitaciones, riesgos de alucinacion y recomendaciones.
