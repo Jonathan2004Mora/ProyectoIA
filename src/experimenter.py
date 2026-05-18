@@ -11,13 +11,9 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import mean
-<<<<<<< HEAD
 from typing import Any, TypedDict, cast
 
 import chromadb
-=======
-from typing import Any
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 
 from src.evaluator import EvaluadorRAG
 from src.generation import responder_con_rag
@@ -78,7 +74,6 @@ CONFIGURACIONES: list[ConfiguracionExperimento] = [
 ]
 
 
-<<<<<<< HEAD
 def _coleccion_tiene_datos(chroma_dir: str, collection_name: str) -> bool:
     """Verifica si una coleccion ya esta indexada para evitar reingestar siempre.
 
@@ -93,8 +88,6 @@ def _coleccion_tiene_datos(chroma_dir: str, collection_name: str) -> bool:
         return False
 
 
-=======
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 def _guardar_resultado_experimento(
     entrada: dict[str, Any], log_path: Path = EXPERIMENTOS_LOG_PATH
 ) -> None:
@@ -120,11 +113,7 @@ def _resumen_configuracion(
     nombre: str,
     chunk_size: int,
     top_k: int,
-<<<<<<< HEAD
     resultados: list[ResultadoConsulta],
-=======
-    resultados: list[dict[str, Any]],
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 ) -> dict[str, Any]:
     """Calcula metricas agregadas por configuracion para analisis comparativo."""
     scores_faith = [r["evaluacion"]["score_faithfulness"] for r in resultados]
@@ -152,11 +141,8 @@ def ejecutar_experimentos(
     chroma_dir: str = "chroma_db",
     corpus_dir: str = "corpus",
     overlap: int = 50,
-<<<<<<< HEAD
     force_reindex: bool = False,
     generation_model: str = "gpt-4o-mini",
-=======
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
 ) -> dict[str, Any]:
     """Ejecuta el benchmark de configuraciones y retorna resultados completos."""
     evaluador = EvaluadorRAG()
@@ -187,11 +173,7 @@ def ejecutar_experimentos(
                 chunk_overlap=overlap,
             )
 
-<<<<<<< HEAD
         resultados_config: list[ResultadoConsulta] = []
-=======
-        resultados_config: list[dict[str, Any]] = []
->>>>>>> 0d61017 (Fix: limpiar warnings de tipado y tipos ambiguos en PP2)
         for query in queries_ejecucion:
             chunks = recuperar_chunks(
                 query=query,
