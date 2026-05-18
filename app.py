@@ -10,6 +10,7 @@ La app integra:
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
@@ -22,6 +23,8 @@ from src.generation import responder_con_rag, responder_sin_rag
 from src.ingestion import ingestar_corpus
 from src.logger import cargar_consultas, guardar_consulta
 from src.retrieval import recuperar_chunks
+
+CORPUS_DIR = Path(__file__).resolve().parent / "corpus"
 
 Chunk = dict[str, Any]
 Evaluacion = dict[str, Any]
@@ -320,6 +323,78 @@ def _asegurar_corpus_indexado() -> None:
         ingestar_corpus(chunk_size=500, chunk_overlap=50)
 
 
+def _listar_documentos() -> list[dict[str, Any]]:
+    """Lista todos los PDFs del corpus con metadatos básicos."""
+    CORPUS_DIR.mkdir(exist_ok=True)
+    docs: list[dict[str, Any]] = []
+    for pdf in sorted(CORPUS_DIR.glob("*.pdf")):
+        stat = pdf.stat()
+        docs.append({
+            "nombre": pdf.name,
+            "tamaño": f"{stat.st_size / 1024:.1f} KB",
+            "modificado": pd.Timestamp(stat.st_mtime, unit="s").strftime("%Y-%m-%d %H:%M"),
+        })
+    return docs
+
+
+def _render_sidebar() -> None:
+    """Sidebar con gestión de documentos: subir, indexar y explorar el corpus."""
+    with st.sidebar:
+        st.markdown("### Centro de control")
+        st.caption("EIF420 · RAG académico")
+
+        st.divider()
+        st.markdown("#### Subir documentos")
+
+        archivos = st.file_uploader(
+            "Arrastra PDFs aquí",
+            type=["pdf"],
+            accept_multiple_files=True,
+            label_visibility="collapsed",
+        )
+
+        if archivos:
+            CORPUS_DIR.mkdir(exist_ok=True)
+            guardados: list[str] = []
+            for archivo in archivos:
+                destino = CORPUS_DIR / archivo.name
+                destino.write_bytes(archivo.read())
+                guardados.append(archivo.name)
+
+            st.success(f"{len(guardados)} archivo(s) guardado(s)")
+
+            with st.spinner("Indexando documentos nuevos..."):
+                try:
+                    stats = ingestar_corpus(chunk_size=500, chunk_overlap=50)
+                    st.success(
+                        f"Indexado: {stats['chunks_indexados']} chunks "
+                        f"de {stats['archivos_procesados']} archivo(s)"
+                    )
+                except Exception as exc:
+                    st.error(f"Error al indexar: {exc}")
+
+        st.divider()
+        st.markdown("#### Documentos en corpus")
+
+        docs = _listar_documentos()
+        if not docs:
+            st.info("No hay documentos. Sube PDFs arriba.")
+        else:
+            for doc in docs:
+                with st.expander(f"📄 {doc['nombre']}", expanded=False):
+                    st.caption(f"Tamaño: {doc['tamaño']}")
+                    st.caption(f"Subido: {doc['modificado']}")
+
+            st.divider()
+
+        if st.button("Re-indexar corpus completo", use_container_width=True, type="secondary"):
+            try:
+                _asegurar_corpus_indexado()
+                st.success("Corpus re-indexado correctamente.")
+            except Exception as exc:
+                st.error(f"Error al indexar corpus: {exc}")
+
+
 def _render_dataframe(data: Any) -> None:
   """Wrapper tipado para mostrar dataframes sin ruido del type checker."""
   cast(Any, st).dataframe(data, use_container_width=True)
@@ -573,15 +648,7 @@ def main() -> None:
     """Orquestador principal de la interfaz PP2."""
     _render_header()
 
-    with st.sidebar:
-        st.markdown("### Centro de control")
-        st.caption("EIF420 · RAG académico")
-        if st.button("Re-indexar corpus base", use_container_width=True):
-            try:
-                _asegurar_corpus_indexado()
-                st.success("Corpus indexado correctamente.")
-            except Exception as exc:
-                st.error(f"Error al indexar corpus: {exc}")
+    _render_sidebar()
 
     evaluador = EvaluadorRAG()
     tab1, tab2, tab3, tab4 = st.tabs(
