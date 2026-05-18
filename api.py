@@ -76,7 +76,12 @@ def list_documents() -> dict[str, Any]:
 @app.get("/api/documents/{filename}/file")
 def get_document(filename: str) -> FileResponse:
     path = _document_path(filename)
-    return FileResponse(path, media_type="application/pdf", filename=path.name)
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        filename=path.name,
+        content_disposition_type="inline",
+    )
 
 
 @app.post("/api/documents")
