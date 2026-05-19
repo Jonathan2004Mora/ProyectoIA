@@ -55,4 +55,4 @@ http://localhost:5173
 - La API corre en `http://127.0.0.1:8000`.
 - El frontend usa proxy hacia `/api`.
 - Los PDFs deben estar en `corpus/`.
-- La interfaz anterior de Streamlit sigue en `app.py`, pero no es necesaria para el frontend nuevo.
+- La interfaz anterior de Streamlit sigue en `app.py`
