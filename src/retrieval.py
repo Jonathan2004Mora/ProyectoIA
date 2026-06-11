@@ -37,7 +37,13 @@ def recuperar_chunks(
     chroma_dir: str = "chroma_db",
     collection_name: str = COLLECTION_NAME,
 ) -> List[dict[str, Any]]:
-    """Recupera top-k chunks relevantes y retorna lista de dicts.
+    """Busca en ChromaDB los fragmentos del corpus mas parecidos a la pregunta.
+
+    Parametros:
+    - query: pregunta escrita por el usuario.
+    - k: cantidad maxima de fragmentos a recuperar.
+    - chroma_dir: carpeta donde esta guardado el indice vectorial local.
+    - collection_name: nombre de la coleccion de ChromaDB.
 
     Formato de salida por item:
     {
@@ -47,30 +53,39 @@ def recuperar_chunks(
       "score": float
     }
     """
+    # Evita llamar a OpenAI o ChromaDB con una pregunta vacia.
     if not query.strip():
         raise ValueError("La consulta no puede estar vacia.")
 
+    # La API key se toma del archivo .env. Sin esta clave no se pueden crear
+    # embeddings, que son necesarios para buscar por similitud semantica.
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("No se encontro OPENAI_API_KEY. Configura un archivo .env.")
 
     cliente_openai = OpenAI(api_key=api_key)
 
-    # Generamos embedding de la consulta para buscar por similitud vectorial.
+    # Convierte la pregunta en un vector numerico. ChromaDB compara este vector
+    # contra los vectores de los chunks guardados durante la indexacion.
     emb_query = cliente_openai.embeddings.create(model=EMBEDDING_MODEL, input=query)
     query_embedding = emb_query.data[0].embedding
 
+    # Abre la base vectorial persistida en disco y obtiene la coleccion donde
+    # se guardaron los fragmentos del corpus.
     chroma_path = _resolver_ruta(chroma_dir)
     chroma_client = chromadb.PersistentClient(path=str(chroma_path))
     collection = chroma_client.get_collection(name=collection_name)
 
-    # distances: menor distancia = mayor similitud.
+    # Busca los k chunks mas cercanos al embedding de la pregunta.
+    # En ChromaDB, distances funciona asi: menor distancia = mayor similitud.
     resultados = collection.query(
         query_embeddings=[query_embedding],
         n_results=k,
         include=["documents", "metadatas", "distances"],
     )
 
+    # ChromaDB devuelve listas anidadas porque permite consultar varias preguntas
+    # a la vez. Aqui solo consultamos una, por eso usamos la posicion [0].
     documentos_raw = resultados.get("documents") or [[]]
     metadatos_raw = resultados.get("metadatas") or [[]]
     distancias_raw = resultados.get("distances") or [[]]
@@ -81,14 +96,20 @@ def recuperar_chunks(
 
     salida: List[dict[str, Any]] = []
     for texto, meta, distancia in zip(documentos, metadatos, distancias):
+        # Cada metadata indica de que archivo y pagina salio el chunk.
         meta_map: Mapping[str, Any] = dict(meta)
 
-        # Convertimos distancia en score interpretable: mas alto = mejor.
+        # Convertimos distancia en un score mas facil de leer:
+        # - distancia baja produce score alto
+        # - distancia alta produce score bajo
         score = 1.0 / (1.0 + float(distancia))
 
+        # Normaliza el nombre de la fuente para que siempre sea texto.
         source_raw = meta_map.get("source", "desconocido")
         source = str(source_raw)
 
+        # Normaliza la pagina para que siempre sea int. Si viene en un formato
+        # raro o ausente, se usa -1 como valor de pagina desconocida.
         page_raw = meta_map.get("page", -1)
         if isinstance(page_raw, bool):
             page = -1
@@ -99,6 +120,7 @@ def recuperar_chunks(
         else:
             page = -1
 
+        # Este es el formato que consumen generation.py, evaluator.py y la UI.
         salida.append(
             {
                 "text": texto,

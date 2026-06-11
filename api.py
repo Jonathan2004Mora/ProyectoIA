@@ -9,6 +9,7 @@ import pandas as pd
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from openai import APIStatusError, AuthenticationError, OpenAIError
 from pydantic import BaseModel, Field
 
 from src.evaluator import EvaluadorRAG
@@ -17,6 +18,7 @@ from src.generation import responder_con_rag, responder_sin_rag
 from src.ingestion import ingestar_corpus
 from src.logger import cargar_consultas, guardar_consulta
 from src.retrieval import recuperar_chunks
+from src.translation import preparar_chunks_para_mostrar
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CORPUS_DIR = PROJECT_ROOT / "corpus"
@@ -59,6 +61,35 @@ def _document_summary(path: Path) -> dict[str, Any]:
         "modified": pd.Timestamp(stat.st_mtime, unit="s").strftime("%Y-%m-%d %H:%M"),
         "url": f"/api/documents/{path.name}/file",
     }
+
+
+def _raise_known_backend_error(exc: Exception) -> None:
+    if isinstance(exc, AuthenticationError):
+        raise HTTPException(
+            status_code=401,
+            detail="La API key de OpenAI no es valida. Revisa OPENAI_API_KEY en el archivo .env.",
+        ) from exc
+
+    if isinstance(exc, APIStatusError):
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=f"OpenAI rechazo la solicitud: {exc.message}",
+        ) from exc
+
+    if isinstance(exc, OpenAIError):
+        raise HTTPException(
+            status_code=502,
+            detail="No se pudo completar la llamada a OpenAI. Revisa conexion, cuota o configuracion.",
+        ) from exc
+
+    message = str(exc)
+    if "Collection" in message and ("does not exist" in message or "not found" in message):
+        raise HTTPException(
+            status_code=409,
+            detail="El indice vectorial no existe todavia. Ve a Corpus y presiona Reindexar corpus.",
+        ) from exc
+
+    raise exc
 
 
 @app.get("/api/health")
@@ -110,17 +141,26 @@ def query_rag(payload: QueryRequest) -> dict[str, Any]:
     if not query:
         raise HTTPException(status_code=400, detail="La consulta no puede estar vacia")
 
-    chunks = recuperar_chunks(query=query, k=payload.top_k)
-    answer = responder_con_rag(query=query, chunks=chunks)
-    evaluation = EvaluadorRAG().evaluar(query=query, respuesta=answer, chunks=chunks)
-    guardar_consulta(
-        query=query,
-        modo="con_rag",
-        chunks_recuperados=chunks,
-        respuesta=answer,
-        evaluacion=evaluation,
-    )
-    return {"query": query, "chunks": chunks, "answer": answer, "evaluation": evaluation}
+    try:
+        chunks = recuperar_chunks(query=query, k=payload.top_k)
+        answer = responder_con_rag(query=query, chunks=chunks)
+        evaluation = EvaluadorRAG().evaluar(query=query, respuesta=answer, chunks=chunks)
+        guardar_consulta(
+            query=query,
+            modo="con_rag",
+            chunks_recuperados=chunks,
+            respuesta=answer,
+            evaluacion=evaluation,
+        )
+        return {
+            "query": query,
+            "chunks": preparar_chunks_para_mostrar(chunks),
+            "answer": answer,
+            "evaluation": evaluation,
+        }
+    except Exception as exc:
+        _raise_known_backend_error(exc)
+        raise
 
 
 @app.post("/api/compare")
@@ -129,20 +169,24 @@ def compare(payload: QueryRequest) -> dict[str, Any]:
     if not query:
         raise HTTPException(status_code=400, detail="La consulta no puede estar vacia")
 
-    chunks = recuperar_chunks(query=query, k=payload.top_k)
-    baseline = responder_sin_rag(query=query)
-    rag = responder_con_rag(query=query, chunks=chunks)
-    evaluator = EvaluadorRAG()
-    baseline_eval = evaluator.evaluar(query=query, respuesta=baseline, chunks=[])
-    rag_eval = evaluator.evaluar(query=query, respuesta=rag, chunks=chunks)
-    guardar_consulta(query, "sin_rag", [], baseline, evaluacion=baseline_eval)
-    guardar_consulta(query, "con_rag", chunks, rag, evaluacion=rag_eval)
-    return {
-        "query": query,
-        "chunks": chunks,
-        "baseline": {"answer": baseline, "evaluation": baseline_eval},
-        "rag": {"answer": rag, "evaluation": rag_eval},
-    }
+    try:
+        chunks = recuperar_chunks(query=query, k=payload.top_k)
+        baseline = responder_sin_rag(query=query)
+        rag = responder_con_rag(query=query, chunks=chunks)
+        evaluator = EvaluadorRAG()
+        baseline_eval = evaluator.evaluar(query=query, respuesta=baseline, chunks=[])
+        rag_eval = evaluator.evaluar(query=query, respuesta=rag, chunks=chunks)
+        guardar_consulta(query, "sin_rag", [], baseline, evaluacion=baseline_eval)
+        guardar_consulta(query, "con_rag", chunks, rag, evaluacion=rag_eval)
+        return {
+            "query": query,
+            "chunks": preparar_chunks_para_mostrar(chunks),
+            "baseline": {"answer": baseline, "evaluation": baseline_eval},
+            "rag": {"answer": rag, "evaluation": rag_eval},
+        }
+    except Exception as exc:
+        _raise_known_backend_error(exc)
+        raise
 
 
 @app.post("/api/experiments")

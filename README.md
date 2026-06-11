@@ -1,172 +1,272 @@
-# RAG Academico - Reducir Alucinaciones con Evidencia y Citas
+# RAG Academico
 
-Proyecto para EIF420 (Universidad de Costa Rica) orientado a comparar respuestas de un modelo:
-- SIN RAG (sin evidencia externa)
-- CON RAG (con evidencia recuperada de documentos del curso)
+$pid8000 = (Get-NetTCPConnection -LocalPort 8000 -State Listen).OwningProcess
+Stop-Process -Id $pid8000 -Force
+$pid5173 = (Get-NetTCPConnection -LocalPort 5173 -State Listen).OwningProcess
+Stop-Process -Id $pid5173 -Force
+Get-Process node -ErrorAction SilentlyContinue
+Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
 
-El objetivo es reducir alucinaciones usando fragmentos del corpus y citas de fuente/pagina.
+.\.venv\Scripts\python.exe -m uvicorn api:app --host 127.0.0.1 --port 8000
+cd frontend
+npm run dev
 
-## Estructura del proyecto
+
+
+Remove-Item -Recurse -Force .\chroma_db -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force .\logs -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Force .\logs | Out-Null
+Set-Content .\logs\consultas.json "[]"
+
+.\.venv\Scripts\python.exe -m src.ingestion
+
+Aplicacion academica para consultar un corpus de PDFs usando RAG
+(`Retrieval-Augmented Generation`). La app combina un backend **FastAPI**, una
+interfaz **React + Tailwind** y una base vectorial local con **ChromaDB**.
+
+El objetivo es reducir alucinaciones: cada respuesta RAG se genera a partir de
+fragmentos recuperados del corpus y muestra fuentes con documento, pagina y
+evaluacion automatica.
+
+## Que puedes probar en la app
+
+- **Consulta RAG**: pregunta al corpus y revisa respuesta, fuentes, chunks y
+  evaluacion.
+- **Comparacion**: compara una respuesta sin RAG contra una respuesta con RAG.
+- **Experimentos**: ejecuta un benchmark de configuraciones de `chunk_size` y
+  `top_k`.
+- **Historial**: revisa consultas guardadas y sus metricas.
+- **Corpus**: sube PDFs, reindexa embeddings y abre documentos originales.
+
+## Arquitectura
 
 ```text
-rag_academico/
-├── corpus/                 # PDFs y documentos del curso
-├── chroma_db/              # Vector store persistente
-├── logs/                   # JSON logs de consultas
-├── app.py                  # Interfaz Streamlit PP2
-├── src/
-│   ├── __init__.py
-│   ├── init.py             # Archivo de compatibilidad solicitado
-│   ├── ingestion.py        # Carga y chunking de documentos
-│   ├── retrieval.py        # Busqueda en ChromaDB
-│   ├── generation.py       # Llamada OpenAI con/sin contexto
-│   ├── logger.py           # Guardado de logs en JSON
-│   ├── evaluator.py        # Evaluador LLM con Structured Outputs
-│   └── experimenter.py     # Comparador de configuraciones (A/B/C/D)
-├── main.py                 # CLI principal
-├── demo_pp1.py             # Script de demostracion automatica
-├── requirements.txt
-└── README.md
+ProyectoIA/
+|-- api.py                  # API HTTP FastAPI para la interfaz React
+|-- corpus/                 # PDFs usados como fuente documental
+|-- chroma_db/              # Base vectorial local generada al indexar
+|-- logs/                   # Historial JSON de consultas y experimentos
+|-- frontend/               # App React + Vite + Tailwind
+|-- src/
+|   |-- ingestion.py        # Lee PDFs, crea chunks, embeddings e indice ChromaDB
+|   |-- retrieval.py        # Recupera chunks relevantes desde ChromaDB
+|   |-- generation.py       # Genera respuestas con y sin RAG
+|   |-- evaluator.py        # Evalua faithfulness, relevancia y alucinaciones
+|   |-- logger.py           # Guarda historial de consultas
+|   `-- experimenter.py     # Ejecuta experimentos comparativos
+|-- requirements.txt        # Dependencias Python
+`-- README.md
 ```
 
 ## Requisitos
 
-- Python 3.10+
-- API key de OpenAI
+- Python 3.10 o superior.
+- Node.js y npm.
+- Una API key de OpenAI.
+- PDFs dentro de `corpus/` o PDFs listos para subir desde la pantalla **Corpus**.
 
-## Instalacion
+## Instalacion inicial
 
-1. Entrar a la carpeta del proyecto:
+Todos los comandos se ejecutan desde la raiz del proyecto:
 
-```bash
-cd rag_academico
+```powershell
+cd "C:\Users\jonat\source\repos\Proyecto IA-RAG\ProyectoIA"
 ```
 
-2. Crear y activar entorno virtual (recomendado):
+### 1. Crear el entorno virtual de Python
 
-```bash
+Si ya existe la carpeta `.venv`, puedes pasar al paso siguiente.
+
+```powershell
 python -m venv .venv
-# Windows PowerShell
-& .\.venv\Scripts\Activate.ps1
-# Linux/macOS
-# source .venv/bin/activate
 ```
 
-3. Instalar dependencias:
+### 2. Instalar dependencias del backend
 
-```bash
-pip install -r requirements.txt
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-4. Crear archivo `.env` en la raiz del proyecto con:
+### 3. Configurar variables de entorno
+
+Crea un archivo `.env` en la raiz del proyecto:
 
 ```env
 OPENAI_API_KEY=tu_api_key_aqui
-# Opcional:
 OPENAI_MODEL=gpt-4.1-mini
+OPENAI_EVAL_MODEL=gpt-4o-mini
 ```
 
-## Uso
+`OPENAI_API_KEY` es obligatoria. `OPENAI_MODEL` y `OPENAI_EVAL_MODEL` son
+opcionales; si no se definen, la app usa los valores por defecto del codigo.
 
-### 1) Ingestion del corpus
+### 4. Instalar dependencias del frontend
 
-Coloca los PDFs del curso dentro de `corpus/` y ejecuta:
-
-```bash
-python -m src.ingestion
+```powershell
+cd frontend
+npm install
+cd ..
 ```
 
-Esto extrae texto, hace chunking (`chunk_size=500`, `chunk_overlap=50`) y crea/actualiza la coleccion en ChromaDB.
+## Ejecutar la aplicacion
 
-### 2) CLI interactivo
+La app necesita dos procesos activos: el backend en FastAPI y el frontend en
+Vite.
 
-```bash
-python main.py
+### 1. Levantar el backend
+
+Desde la raiz del proyecto:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn api:app --host 127.0.0.1 --port 8000
 ```
 
-La CLI permite:
-- Elegir modo: Solo RAG o Comparacion RAG vs Sin-RAG.
-- Mostrar chunks recuperados antes de la respuesta.
-- Guardar cada consulta en `logs/consultas.json`.
+El backend queda disponible en:
 
-### 3) Demo automatica para PP1
-
-```bash
-python demo_pp1.py
+```text
+http://127.0.0.1:8000
 ```
 
-Este script ejecuta 3 consultas de prueba en modo comparacion y guarda resultados en logs para evidencia academica.
+Puedes verificarlo abriendo:
 
-### 4) Interfaz profesional PP2 (Streamlit)
-
-```bash
-python -m streamlit run app.py
+```text
+http://127.0.0.1:8000/api/health
 ```
 
-Si estas ubicado un nivel arriba (en `RAG_AI/`), ejecuta:
+Debe responder:
 
-```bash
-cd rag_academico
-& .\.venv\Scripts\Activate.ps1
-python -m streamlit run app.py
+```json
+{"status":"ok"}
 ```
 
-Pestanas disponibles:
-- 🔍 Consulta RAG: evidencia recuperada + respuesta + evaluacion automatica.
-- ⚔️ RAG vs Sin RAG: comparacion lado a lado.
-- 🧪 Experimentos: benchmark de configuraciones A/B/C/D.
-- 📊 Historial: consultas registradas desde logs.
+### 2. Levantar el frontend
 
-### 5) Experimentos PP2 por script
+En otra ventana, desde la raiz del proyecto:
 
-```bash
-python -m src.experimenter
+```powershell
+cd frontend
+npm run dev
 ```
 
-Esto ejecuta al menos 5 queries sobre estas configuraciones:
-- Config A: chunk_size=300, top_k=2
-- Config B: chunk_size=300, top_k=5
-- Config C: chunk_size=700, top_k=2
-- Config D: chunk_size=700, top_k=5
+Abre la app en el navegador:
 
-Los resultados y promedios se guardan en `logs/experimentos.json`.
+```text
+http://localhost:5173
+```
 
-## Detalle de modulos
+El frontend usa un proxy de Vite: toda llamada a `/api` se redirige al backend
+en `http://127.0.0.1:8000`.
 
-- `src/ingestion.py`:
-  - Carga todos los PDFs de `corpus/`.
-  - Extrae texto por pagina con `pypdf`.
-  - Aplica chunking con `RecursiveCharacterTextSplitter`.
-  - Indexa en ChromaDB con metadatos: `source`, `page`, `chunk`.
+## Preparar el corpus
 
-- `src/retrieval.py`:
-  - Recupera top-k chunks relevantes (default `k=3`).
-  - Retorna estructura: `{text, source, page, score}`.
+La app necesita PDFs indexados para responder con evidencia.
 
-- `src/generation.py`:
-  - `responder_sin_rag(query)` para baseline.
-  - `responder_con_rag(query, chunks)` para respuesta guiada por evidencia y citas.
+1. Abre `http://localhost:5173`.
+2. Entra a la vista **Corpus**.
+3. Verifica que aparezcan PDFs disponibles.
+4. Si quieres agregar documentos, sube archivos PDF desde esa misma vista.
+5. Despues de subir PDFs, la app los guarda en `corpus/` y ejecuta la
+   indexacion automaticamente.
+6. Si ya tenias PDFs en `corpus/`, usa el boton de reindexar para crear o
+   actualizar `chroma_db/`.
 
-- `src/logger.py`:
-  - Guarda logs en JSON con timestamp, query, modo, chunks y respuesta.
+La indexacion hace lo siguiente:
 
-- `src/evaluator.py`:
-  - Define el modelo estructurado `EvaluacionRAG` con Pydantic.
-  - Implementa `EvaluadorRAG.evaluar(query, respuesta, chunks)` usando OpenAI + Structured Outputs.
-  - Retorna fallback seguro si falla el parseo del LLM.
+- Lee todos los PDFs de `corpus/`.
+- Extrae texto por pagina.
+- Divide el contenido en chunks de tamano `500` con solapamiento `50`.
+- Genera embeddings con `text-embedding-3-small`.
+- Guarda documentos, metadatos y embeddings en ChromaDB.
 
-- `src/experimenter.py`:
-  - Corre pruebas comparativas de configuraciones de chunking y retrieval.
-  - Evalua cada respuesta con `EvaluadorRAG`.
-  - Genera resumen con promedios de faithfulness, relevancia, porcentaje de alucinaciones y veredicto mas frecuente.
+Cada chunk conserva:
 
-## Prompt del sistema para RAG
+- `source`: nombre del PDF.
+- `page`: pagina del documento.
+- `chunk`: numero de fragmento dentro de la pagina.
 
-El modo RAG usa el siguiente prompt de sistema:
+## Flujo recomendado para probar
 
-> "Eres un asistente academico. Responde UNICAMENTE basandote en los fragmentos de documentos proporcionados. Al final de tu respuesta, incluye una seccion '📚 Fuentes:' listando cada documento y pagina usada. Si la informacion no esta en los fragmentos, di explicitamente que no tienes evidencia suficiente."
+1. Confirma que el backend responde en `/api/health`.
+2. Abre `http://localhost:5173`.
+3. En **Corpus**, confirma que hay PDFs e indexalos si hace falta.
+4. En **Consulta RAG**, escribe una pregunta relacionada con tus documentos.
+5. Ajusta `top_k` si quieres recuperar mas o menos evidencia.
+6. Ejecuta la consulta.
+7. Revisa:
+   - respuesta generada;
+   - fuentes citadas;
+   - chunks recuperados;
+   - score de faithfulness;
+   - score de relevancia;
+   - veredicto de evaluacion.
+8. En **Comparacion**, usa la misma pregunta para comparar respuesta sin RAG y
+   respuesta con RAG.
+9. En **Historial**, verifica que las consultas hayan quedado registradas.
+10. En **Experimentos**, corre el benchmark para comparar configuraciones.
 
-## Notas academicas
+## Endpoints principales
 
-- Si no hay evidencia suficiente en chunks recuperados, el sistema lo indica explicitamente.
-- Los logs permiten comparar calidad, trazabilidad y alucinaciones entre modos.
+| Metodo | Ruta | Descripcion |
+| --- | --- | --- |
+| `GET` | `/api/health` | Verifica que el backend este activo. |
+| `GET` | `/api/documents` | Lista PDFs disponibles en `corpus/`. |
+| `GET` | `/api/documents/{filename}/file` | Abre un PDF del corpus en el navegador. |
+| `POST` | `/api/documents` | Sube PDFs y reindexa el corpus. |
+| `POST` | `/api/index` | Reindexa los PDFs existentes. |
+| `POST` | `/api/query` | Ejecuta una consulta RAG. |
+| `POST` | `/api/compare` | Compara respuesta sin RAG contra respuesta con RAG. |
+| `POST` | `/api/experiments` | Ejecuta experimentos con varias configuraciones. |
+| `GET` | `/api/history` | Devuelve el historial de consultas guardadas. |
+
+## Datos que se guardan
+
+- `chroma_db/`: indice vectorial persistente de ChromaDB.
+- `logs/consultas.json`: historial de preguntas, respuestas, chunks y
+  evaluaciones.
+- `logs/experimentos.json`: resultados acumulados de benchmarks.
+- `corpus/`: PDFs originales usados como fuente.
+
+## Modelos usados
+
+- Embeddings: `text-embedding-3-small`.
+- Respuestas: `OPENAI_MODEL` o `gpt-4.1-mini` por defecto.
+- Evaluacion automatica: `OPENAI_EVAL_MODEL` o `gpt-4o-mini` por defecto.
+
+## Como interpretar la evaluacion
+
+La evaluacion automatica devuelve:
+
+- `score_faithfulness`: que tanto la respuesta se mantiene fiel a los chunks.
+- `score_relevancia`: que tanto responde a la pregunta.
+- `tiene_alucinacion`: si detecta informacion no respaldada.
+- `citas_validas`: si las fuentes usadas son consistentes.
+- `problemas_detectados`: lista de alertas.
+- `veredicto`: `CONFIABLE`, `DUDOSO` o `ALUCINACION`.
+
+## Solucion de problemas
+
+**El frontend abre, pero las consultas fallan**
+
+Verifica que el backend este corriendo en `http://127.0.0.1:8000` y que
+`/api/health` responda `{"status":"ok"}`.
+
+**Aparece un error sobre `OPENAI_API_KEY`**
+
+Revisa que el archivo `.env` exista en la raiz del proyecto y que contenga una
+API key valida.
+
+**No hay documentos o no hay evidencia**
+
+Sube PDFs desde **Corpus** o coloca PDFs en `corpus/` y reindexa. Si el PDF es
+escaneado como imagen, puede que no tenga texto extraible.
+
+**La respuesta no cita fuentes**
+
+Revisa los chunks recuperados. Si la evidencia es pobre o no relacionada,
+prueba aumentando `top_k`, agregando mejores documentos o reindexando el
+corpus.
+
+**Los experimentos tardan**
+
+Es normal: cada configuracion puede crear embeddings, consultar el modelo y
+evaluar respuestas. Reindexar forzadamente aumenta el tiempo y el costo.

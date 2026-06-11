@@ -7,9 +7,12 @@ export type DocumentInfo = {
 
 export type Chunk = {
   text: string;
+  original_text?: string;
   source: string;
   page: number;
   score: number;
+  was_translated?: boolean;
+  translated_from?: string;
 };
 
 export type Evaluation = {

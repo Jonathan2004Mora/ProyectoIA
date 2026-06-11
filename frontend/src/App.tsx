@@ -105,11 +105,17 @@ function EvidenceList({ chunks }: { chunks: Chunk[] }) {
             <Badge variant="outline">#{index + 1}</Badge>
             <span className="text-sm font-medium">{chunk.source}</span>
             <span className="text-xs text-muted-foreground">p. {chunk.page}</span>
+            <span className="rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
+              {chunk.text.length} caracteres
+            </span>
+            {chunk.was_translated && (
+              <Badge variant="outline">Traducido del ingles</Badge>
+            )}
             <span className="ml-auto rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground">
               score {chunk.score}
             </span>
           </div>
-          <p className="line-clamp-6 whitespace-pre-wrap text-sm leading-6 text-slate-700">{chunk.text}</p>
+          <p className="whitespace-pre-wrap text-sm leading-6 text-slate-700">{chunk.text}</p>
         </article>
       ))}
     </div>
