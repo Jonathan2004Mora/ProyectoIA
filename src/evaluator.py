@@ -1,8 +1,4 @@
-"""Modulo de evaluacion automatica para respuestas RAG.
-
-Este evaluador usa exclusivamente OpenAI y Structured Outputs para obtener
-una evaluacion consistente de faithfulness, relevancia y alucinaciones.
-"""
+"""Evaluacion automatica de respuestas RAG contra evidencia recuperada."""
 
 from __future__ import annotations
 
@@ -13,7 +9,6 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-# Cargamos variables de entorno para obtener OPENAI_API_KEY y modelo opcional.
 load_dotenv()
 
 
@@ -30,6 +25,40 @@ class EvaluacionRAG(BaseModel):
 
 class EvaluadorRAG:
     """Evaluador critico que califica una respuesta frente a su evidencia."""
+
+    SYSTEM_PROMPT = """
+Eres un evaluador critico y estricto de sistemas RAG academicos.
+Compara cada afirmacion de la respuesta contra los fragmentos de evidencia.
+No uses conocimiento externo para completar vacios ni para validar afirmaciones.
+
+RUBRICA DE FAITHFULNESS (0-10):
+- 10: Todas las afirmaciones verificables estan respaldadas directamente por la evidencia.
+- 8-9: Casi todo esta respaldado; solo hay una imprecision menor.
+- 6-7: La idea principal esta respaldada, pero hay detalles sin soporte claro.
+- 4-5: Solo una parte importante esta respaldada o se mezcla evidencia con suposiciones.
+- 1-3: La mayor parte no esta respaldada o contradice la evidencia.
+- 0: No existe evidencia para validar la respuesta o esta completamente inventada.
+
+RUBRICA DE RELEVANCIA (0-10):
+- 10: Responde completa, directa y precisamente la pregunta.
+- 8-9: Responde bien, con omisiones o contenido extra menor.
+- 6-7: Responde parcialmente o incluye bastante informacion innecesaria.
+- 4-5: Apenas aborda la pregunta o deja fuera elementos centrales.
+- 1-3: Es mayormente irrelevante.
+- 0: No responde la pregunta.
+
+REGLAS OBLIGATORIAS:
+- No uses 5 como valor por defecto. Selecciona el valor que mejor corresponda a la rubrica.
+- Admitir correctamente falta de evidencia puede ser fiel, pero no necesariamente relevante.
+- Si hay afirmaciones factuales no respaldadas, tiene_alucinacion debe ser true.
+- Si tiene_alucinacion es true, faithfulness no puede superar 4 y el veredicto es ALUCINACION.
+- CONFIABLE requiere: sin alucinacion, citas validas, faithfulness >= 8 y relevancia >= 7.
+- DUDOSO corresponde a respuestas parcialmente respaldadas, incompletas o con citas debiles.
+- Las citas son validas solo si documento y pagina coinciden con la evidencia suministrada.
+- problemas_detectados debe mencionar problemas concretos; usa una lista vacia si no hay problemas.
+
+Responde UNICAMENTE con el objeto segun el schema proporcionado.
+""".strip()
 
     def __init__(self, model: str | None = None) -> None:
         self.model = model or os.getenv("OPENAI_EVAL_MODEL", "gpt-4o-mini")
@@ -57,7 +86,7 @@ class EvaluadorRAG:
 
     @staticmethod
     def _formatear_chunks(chunks: list[dict[str, Any]]) -> str:
-        """Construye bloque de evidencia con metadata para el prompt."""
+        """Construye un bloque de evidencia con metadata para el prompt."""
         if not chunks:
             return "No se recuperaron chunks para esta respuesta."
 
@@ -73,23 +102,37 @@ class EvaluadorRAG:
 
         return "\n\n".join(bloques)
 
+    @staticmethod
+    def _normalizar_evaluacion(
+        evaluacion: EvaluacionRAG, chunks: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Aplica reglas deterministas para evitar resultados contradictorios."""
+        resultado = evaluacion.model_dump()
+        problemas = [p.strip() for p in resultado["problemas_detectados"] if p.strip()]
+
+        if not chunks:
+            resultado["citas_validas"] = False
+            mensaje = "No se proporciono evidencia para verificar la respuesta."
+            if mensaje not in problemas:
+                problemas.append(mensaje)
+
+        if resultado["tiene_alucinacion"]:
+            resultado["score_faithfulness"] = min(resultado["score_faithfulness"], 4)
+            resultado["veredicto"] = "ALUCINACION"
+        elif (
+            resultado["score_faithfulness"] >= 8
+            and resultado["score_relevancia"] >= 7
+            and resultado["citas_validas"]
+        ):
+            resultado["veredicto"] = "CONFIABLE"
+        else:
+            resultado["veredicto"] = "DUDOSO"
+
+        resultado["problemas_detectados"] = problemas
+        return resultado
+
     def evaluar(self, query: str, respuesta: str, chunks: list[dict[str, Any]]) -> dict[str, Any]:
-        """Evalua la respuesta con base en evidencia recuperada.
-
-        Usa Structured Outputs mediante parse() para mapear directamente al
-        modelo Pydantic EvaluacionRAG.
-        """
-        system_prompt = (
-            "Eres un evaluador critico y estricto de sistemas RAG academicos. \n"
-            "Analiza si la respuesta esta bien soportada por los fragmentos de evidencia.\n\n"
-            "Evalua:\n"
-            "- Faithfulness: ¿La respuesta solo usa informacion presente en los chunks o inventa contenido?\n"
-            "- Relevancia: ¿La respuesta responde directamente y de forma util a la pregunta?\n"
-            "- Alucinaciones: ¿Existe informacion no respaldada por los chunks?\n"
-            "- Citas: ¿Las referencias a fuentes son precisas y validas?\n\n"
-            "Responde UNICAMENTE con el objeto segun el schema proporcionado. Se objetivo y riguroso."
-        )
-
+        """Evalua la respuesta con base en la evidencia recuperada."""
         evidencia = self._formatear_chunks(chunks)
         prompt_usuario = (
             f"Pregunta:\n{query}\n\n"
@@ -102,7 +145,7 @@ class EvaluadorRAG:
                 model=self.model,
                 temperature=0,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": self.SYSTEM_PROMPT},
                     {"role": "user", "content": prompt_usuario},
                 ],
                 response_format=EvaluacionRAG,
@@ -112,7 +155,6 @@ class EvaluadorRAG:
             if parsed is None:
                 return self._fallback_evaluacion()
 
-            return parsed.model_dump()
+            return self._normalizar_evaluacion(parsed, chunks)
         except Exception:
-            # Se retorna fallback para que la app y los experimentos nunca fallen.
             return self._fallback_evaluacion()
